@@ -4,11 +4,15 @@ import PackageDescription
 let auxilliaryFiles = ["README.md", "LICENSE"]
 let package = Package(
   name: "LoftTest_StandardLibraryProtocolChecks",
+  products: [
+    .library(
+      name: "LoftTest_StandardLibraryProtocolChecks",
+      targets: ["LoftTest_StandardLibraryProtocolChecks"]),
+  ],
   dependencies: [
     .package(
-      name: "LoftTest_CheckXCAssertionFailure",
       url: "https://github.com/loftware/CheckXCAssertionFailure",
-      from: "0.9.0"),
+      from: "0.9.2"),
   ],
   targets: [
     .target(
@@ -20,10 +24,10 @@ let package = Package(
       name: "Test",
       dependencies: [
         "LoftTest_StandardLibraryProtocolChecks",
-        "LoftTest_CheckXCAssertionFailure"],
+        "LoftTest_CheckXCAssertionFailure"
+      ],
       path: ".",
       exclude: auxilliaryFiles + ["StandardLibraryProtocolChecks.swift"],
-      sources: ["Tests.swift"]
-    ),
+      sources: ["Tests.swift"]),
   ]
 )
