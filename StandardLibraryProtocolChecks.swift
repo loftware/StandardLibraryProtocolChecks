@@ -50,11 +50,12 @@ extension Hashable {
   ///
   /// - Precondition: `self == (self1 ?? self) && self1 == (self2 ?? self)`
   public func checkHashableSemantics(equal self1: Self? = nil, _ self2: Self? = nil) {
+    checkEquatableSemantics(equal: self1, self2)
     let self1 = self1 ?? self
     let self2 = self2 ?? self
-    checkEquatableSemantics(equal: self1, self2)
-    XCTAssertEqual(self.hashValue, self1.hashValue)
-    XCTAssertEqual(self.hashValue, self2.hashValue)
+    let message = "Equal instances have distinct hash values"
+    XCTAssertEqual(self.hashValue, self1.hashValue, message)
+    XCTAssertEqual(self.hashValue, self2.hashValue, message)
   }
 }
 
@@ -493,3 +494,7 @@ extension MutableCollection where Element: Equatable {
     XCTAssert(self.elementsEqual(distinctContents))
   }
 }
+
+// Local Variables:
+// fill-column: 100
+// End:
