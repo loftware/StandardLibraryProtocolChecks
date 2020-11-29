@@ -21,7 +21,7 @@ let package = Package(
       exclude: auxilliaryFiles + ["Tests.swift"],
       sources: ["StandardLibraryProtocolChecks.swift"]),
     .testTarget(
-      name: "Test",
+      name: "Test_StandardLibraryProtocolChecks",
       dependencies: [
         "LoftTest_StandardLibraryProtocolChecks",
         "LoftTest_CheckXCAssertionFailure"
