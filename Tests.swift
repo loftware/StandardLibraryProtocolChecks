@@ -76,13 +76,13 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
   }
   
   func testIndistinctInstances() {
-    0.checkEquatableSemantics()
-    1.checkEquatableSemantics()
+    0.checkEquatableLaws()
+    1.checkEquatableLaws()
   }
 
   func testDistinctInstances() {
-    Box(0).checkEquatableSemantics(equal: Box(0), Box(0))
-    Box(1).checkEquatableSemantics(equal: Box(1), Box(1))
+    Box(0).checkEquatableLaws(equal: Box(0), Box(0))
+    Box(1).checkEquatableLaws(equal: Box(1), Box(1))
   }
 
   func testReflexivity() {
@@ -91,7 +91,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableSemantics(equal: samples[1], samples[2]), "reflexivity")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "reflexivity")
   }
 
   func testSymmetry() {
@@ -100,7 +100,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableSemantics(equal: samples[1], samples[2]), "symmetry")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "symmetry")
   }
 
   func testTransitivity() {
@@ -109,7 +109,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableSemantics(equal: samples[1], samples[2]), "transitivity")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "transitivity")
   }
 }
 
@@ -135,34 +135,34 @@ extension BrokenFloat: Hashable {
 
 class HashableTests: CheckXCAssertionFailureTestCase {
   func testIndistinctInstances() {
-    0.checkHashableSemantics()
-    1.checkHashableSemantics()
+    0.checkHashableLaws()
+    1.checkHashableLaws()
   }
   
   func testDistinctInstances() {
-    Box(0).checkHashableSemantics(equal: Box(0), Box(0))
-    Box(1).checkHashableSemantics(equal: Box(1), Box(1))
+    Box(0).checkHashableLaws(equal: Box(0), Box(0))
+    Box(1).checkHashableLaws(equal: Box(1), Box(1))
   }
 
   /// Shows that testing Hashable also tests Equatable
   func testEquatableFailures() {
     let r = EquatableTests.irreflexiveSamples
-    checkXCAssertionFailure(r[0].checkHashableSemantics(equal: r[1], r[2]), "reflexivity")
+    checkXCAssertionFailure(r[0].checkHashableLaws(equal: r[1], r[2]), "reflexivity")
     
     let s = EquatableTests.asymmetricSamples
-    checkXCAssertionFailure(s[0].checkHashableSemantics(equal: s[1], s[2]), "symmetry")
+    checkXCAssertionFailure(s[0].checkHashableLaws(equal: s[1], s[2]), "symmetry")
     
     let t = EquatableTests.intransitiveSamples
-    checkXCAssertionFailure(t[0].checkHashableSemantics(equal: t[1], t[2]), "transitivity")
+    checkXCAssertionFailure(t[0].checkHashableLaws(equal: t[1], t[2]), "transitivity")
   }
 
   func testHashableFailure() {
     let s = [0, 0, 0].map { BrokenFloat($0, butNot: .hashable(.hashValueIsConsistentWithEquality)) }
     
-    s[0].checkEquatableSemantics(equal: s[1], s[2])
+    s[0].checkEquatableLaws(equal: s[1], s[2])
     
     checkXCAssertionFailure(
-      s[0].checkHashableSemantics(equal: s[1], s[2]), "distinct hash")
+      s[0].checkHashableLaws(equal: s[1], s[2]), "distinct hash")
   }
 }
 
@@ -233,8 +233,8 @@ extension BrokenFloat: Comparable {
 
 class ComparableTests: CheckXCAssertionFailureTestCase {
   func testIndistinctInstances() {
-    0.checkComparableSemantics(greater: 1, greaterStill: 2)
-    (-2).checkComparableSemantics(greater: -1, greaterStill: 0)
+    0.checkComparableLaws(greater: 1, greaterStill: 2)
+    (-2).checkComparableLaws(greater: -1, greaterStill: 0)
   }
   
   func testDistinctInstances() {
@@ -242,8 +242,8 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
     let box1 = Box(1), box1a = Box(1), box1b = Box(1)
     let box2 = Box(2)
     let box3 = Box(3)
-    box0.checkComparableSemantics(equal: box0a, box0b, greater: box1, greaterStill: box2)
-    box1.checkComparableSemantics(equal: box1a, box1b, greater: box2, greaterStill: box3)
+    box0.checkComparableLaws(equal: box0a, box0b, greater: box1, greaterStill: box2)
+    box1.checkComparableLaws(equal: box1a, box1b, greater: box2, greaterStill: box3)
   }
 
   /// Shows that testing Comparable also tests Equatable
@@ -251,17 +251,17 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
     let r = EquatableTests.irreflexiveSamples
 
     checkXCAssertionFailure(
-      r[0].checkComparableSemantics(equal: r[1], r[2], greater: r[3], greaterStill: r[4]),
+      r[0].checkComparableLaws(equal: r[1], r[2], greater: r[3], greaterStill: r[4]),
       "reflexivity")
 
     let s = EquatableTests.asymmetricSamples
     checkXCAssertionFailure(
-      s[0].checkComparableSemantics(equal: s[1], s[2], greater: s[3], greaterStill: s[4]),
+      s[0].checkComparableLaws(equal: s[1], s[2], greater: s[3], greaterStill: s[4]),
       "symmetry")
     
     let t = EquatableTests.intransitiveSamples
     checkXCAssertionFailure(
-      t[0].checkComparableSemantics(equal: t[1], t[2], greater: t[3], greaterStill: t[4]),
+      t[0].checkComparableLaws(equal: t[1], t[2], greater: t[3], greaterStill: t[4]),
       "transitivity")
   }
 
@@ -283,9 +283,9 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
     for broken in laws {
       let s = [0, 0, 0, 1, 2].map { BrokenFloat($0, butNot: .comparable(broken)) }
       
-      s[0].checkEquatableSemantics(equal: s[1], s[2])
+      s[0].checkEquatableLaws(equal: s[1], s[2])
       checkXCAssertionFailure(
-        s[0].checkComparableSemantics(equal: s[1], s[2], greater: s[3], greaterStill: s[4]))
+        s[0].checkComparableLaws(equal: s[1], s[2], greater: s[3], greaterStill: s[4]))
     }
   }
 }

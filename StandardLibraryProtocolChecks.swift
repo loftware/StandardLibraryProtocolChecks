@@ -22,7 +22,7 @@ extension Equatable {
   /// should not be trivial copies of each other.  In other words, the instances should be as
   /// different as possible internally, while still being equal.  Otherwise, it's fine to pass `nil`
   /// (the default) for `self1` and `self2`.
-  public func checkEquatableSemantics(equal self1: Self? = nil, _ self2: Self? = nil) {
+  public func checkEquatableLaws(equal self1: Self? = nil, _ self2: Self? = nil) {
     let self1 = self1 ?? self
     let self2 = self2 ?? self
     
@@ -45,8 +45,8 @@ extension Hashable {
   /// should not be trivial copies of each other.  In other words, the instances should be as
   /// different as possible internally, while still being equal.  Otherwise, it's fine to pass `nil`
   /// (the default) for `self1` and `self2`.
-  public func checkHashableSemantics(equal self1: Self? = nil, _ self2: Self? = nil) {
-    checkEquatableSemantics(equal: self1, self2)
+  public func checkHashableLaws(equal self1: Self? = nil, _ self2: Self? = nil) {
+    checkEquatableLaws(equal: self1, self2)
     let self1 = self1 ?? self
     let self2 = self2 ?? self
     let message = "Equal instances have distinct hash values"
@@ -115,13 +115,13 @@ extension Comparable {
   /// - Precondition: if `greaterStill != nil`, `greater != nil`.
   /// - Precondition: if `greater != nil`, `self < greater!`.
   /// - Precondition: if `greaterStill != nil`, `greater! < greaterStill!`.
-  public func checkComparableSemantics(
+  public func checkComparableLaws(
     equal self1: Self? = nil, _ self2: Self? = nil, greater: Self?, greaterStill: Self?
   ) {
     precondition(
       greater != nil || greaterStill == nil, "`greaterStill` should be `nil` when `greater` is")
 
-    checkEquatableSemantics(equal: self1, self2)
+    checkEquatableLaws(equal: self1, self2)
     
     self.checkComparableUnordered(equal: self)
     self.checkComparableUnordered(equal: self1)
@@ -146,7 +146,7 @@ extension Comparable {
   /// you have unequal instances, but can't control the ordering.
   ///
   ///     let (min, mid, max) = X.sort3(X(a), X(b), X(c))
-  ///     min.checkComparableSemantics(greater: mid, greaterStill: max)
+  ///     min.checkComparableLaws(greater: mid, greaterStill: max)
   ///
   public static func sort3(_ a: Self, _ b: Self, _ c: Self) -> (Self, Self, Self) {
     precondition(a != b)
@@ -173,41 +173,6 @@ extension Comparable {
   }
 }
 
-// ************************************************
-// Checking the traversal properties of sequences.
-
-/// A type that “generic type predicates” can conform to when their result is
-///// true.
-fileprivate protocol True {}
-
-/// A “generic type predicate” that detects whether a type is a
-/// `BidirectionalCollection`.
-fileprivate struct IsBidirectionalCollection<C> {}
-extension IsBidirectionalCollection: True where C : BidirectionalCollection {  }
-
-/// A “generic type predicate” that detects whether a type is a
-/// `RandomAccessCollection`.
-fileprivate struct IsRandomAccessCollection<C> {}
-extension IsRandomAccessCollection: True where C : RandomAccessCollection {  }
-
-extension Collection {
-  /// True iff `Self` conforms to `BidirectionalCollection`.
-  ///
-  /// Useful in asserting that a certain collection is *not* declared to conform
-  /// to `BidirectionalCollection`.
-  public var isBidirectional: Bool {
-    return IsBidirectionalCollection<Self>.self is True.Type
-  }
-
-  /// True iff `Self` conforms to `RandomAccessCollection`.
-  ///
-  /// Useful in asserting that a certain collection is *not* declared to conform
-  /// to `RandomAccessCollection`.
-  public var isRandomAccess: Bool {
-    return IsRandomAccessCollection<Self>.self is True.Type
-  }
-}
-
 // *********************************************************************
 // Checking sequence/collection semantics.  Note that these checks cannot see
 // any declarations that happen to shadow the protocol requirements. Those
@@ -220,7 +185,7 @@ extension Sequence where Element: Equatable {
   /// - Complexity: O(N), where N is `expectedContents.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
-  public func checkSequenceSemantics<
+  public func checkSequenceLaws<
     ExampleContents: Collection>(expecting expectedContents: ExampleContents)
     where ExampleContents.Element == Element
   {
@@ -250,7 +215,7 @@ extension Collection where Element: Equatable {
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
-  public func checkCollectionSemantics<ExampleContents: Collection>(
+  public func checkCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents, maxSupportedCount: Int = Int.max
   ) where ExampleContents.Element == Element {
     precondition(
@@ -258,11 +223,11 @@ extension Collection where Element: Equatable {
       "must have at least \(Swift.min(2, maxSupportedCount)) elements")
 
     let indicesWithEnd = Array(indices) + [endIndex]
-    startIndex.checkComparableSemantics(
+    startIndex.checkComparableLaws(
       greater: indicesWithEnd.dropFirst().first,
       greaterStill: indicesWithEnd.dropFirst(2).first)
     
-    checkSequenceSemantics(expecting: expectedContents)
+    checkSequenceLaws(expecting: expectedContents)
     
     var i = startIndex
     var firstPassElements: [Element] = []
@@ -341,10 +306,10 @@ extension BidirectionalCollection where Element: Equatable {
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
-  public func checkBidirectionalCollectionSemantics<ExampleContents: Collection>(
+  public func checkBidirectionalCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents, maxSupportedCount: Int = Int.max
   ) where ExampleContents.Element == Element {
-    checkCollectionSemantics(
+    checkCollectionLaws(
       expecting: expectedContents, maxSupportedCount: maxSupportedCount)
     var i = startIndex
     while i != endIndex {
@@ -434,14 +399,14 @@ extension RandomAccessCollection where Element: Equatable {
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
-  public func checkRandomAccessCollectionSemantics<ExampleContents: Collection>(
+  public func checkRandomAccessCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents,
     operationCounts: RandomAccessOperationCounts = .init(),
     maxSupportedCount: Int = Int.max
   )
   where ExampleContents.Element == Element
   {
-    checkBidirectionalCollectionSemantics(
+    checkBidirectionalCollectionLaws(
       expecting: expectedContents, maxSupportedCount: maxSupportedCount)
     operationCounts.reset()
     
@@ -477,7 +442,7 @@ extension MutableCollection where Element: Equatable {
   /// XCTests `self`'s semantic conformance to `MutableCollection`.
   ///
   /// - Requires: `count == distinctContents.count && !self.elementsEqual(distinctContents)`.
-  public mutating func checkMutableCollectionSemantics<C: Collection>(writing distinctContents: C)
+  public mutating func checkMutableCollectionLaws<C: Collection>(writing distinctContents: C)
     where C.Element == Element
   {
     precondition(
