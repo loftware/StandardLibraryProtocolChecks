@@ -46,7 +46,7 @@ final class BrokenFloat {
 }
 
 //
-// - MARK: Equatable
+// MARK: - Equatable
 //
 
 extension BrokenFloat {
@@ -114,7 +114,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
 }
 
 //
-// - MARK: Hashable
+// MARK: - Hashable
 //
 
 extension BrokenFloat {
@@ -167,7 +167,7 @@ class HashableTests: CheckXCAssertionFailureTestCase {
 }
 
 //
-// - MARK: Comparable
+// MARK: - Comparable
 //
 
 extension BrokenFloat {
