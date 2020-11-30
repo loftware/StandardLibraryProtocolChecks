@@ -288,6 +288,21 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
         s[0].checkComparableLaws(equal: s[1], s[2], greater: s[3], greaterStill: s[4]))
     }
   }
+
+  func testSort3() {
+    // This is horrifying; we need a next_permutation implementation.
+    for zeroPos in 0..<3 {
+      for onePos in 0..<3 where onePos != zeroPos {
+        for twoPos in 0..<3 where twoPos != zeroPos && twoPos != onePos {
+          var a = [0, 0, 0]
+          a[onePos] = 1
+          a[twoPos] = 2
+          let sorted = Int.sort3(a[0], a[1], a[2])
+          XCTAssert(sorted == (0, 1, 2))
+        }
+      }
+    }
+  }
 }
 
 // Local Variables:
