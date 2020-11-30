@@ -266,9 +266,27 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
   }
 
   func testComparableFailures() {
-    let s = [0, 0, 0].map { BrokenFloat($0, butNot: .hashable(.hashValueIsConsistentWithEquality)) }
-    
-    s[0].checkEquatableSemantics(equal: s[1], s[2])
+    let laws: [BrokenFloat.ComparableLaw] = [
+      .less(.equalImpliesFalse), .less(.greaterOrEqualImpliesFalse), .less(.greaterImpliesFalse),
+      
+      .lessOrEqual(.lessImpliesTrue),
+      .lessOrEqual(.equalImpliesTrue),
+      .lessOrEqual(.greaterImpliesFalse),
+      
+      .greaterOrEqual(.lessImpliesFalse),
+      .greaterOrEqual(.equalImpliesTrue),
+      .greaterOrEqual(.greaterImpliesTrue),
+      
+      .greater(.lessImpliesFalse), .greater(.lessOrEqualImpliesFalse), .greater(.equalImpliesFalse)
+    ]
+
+    for broken in laws {
+      let s = [0, 0, 0, 1, 2].map { BrokenFloat($0, butNot: .comparable(broken)) }
+      
+      s[0].checkEquatableSemantics(equal: s[1], s[2])
+      checkXCAssertionFailure(
+        s[0].checkComparableSemantics(equal: s[1], s[2], greater: s[3], greaterStill: s[4]))
+    }
   }
 }
 
