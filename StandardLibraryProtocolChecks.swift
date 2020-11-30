@@ -15,19 +15,16 @@
 import XCTest
 
 extension Equatable {
-  /// XCTests `Self`'s conformance to `Equatable`, given equivalent instances.
+  /// XCTests `Self`'s conformance to `Equatable`, given equivalent instances
+  /// `self`, `self1`, and `self2`.
   ///
   /// If `Self` has a distinguishable identity or any remote parts, `self`, `self1`, and `self2`
   /// should not be trivial copies of each other.  In other words, the instances should be as
   /// different as possible internally, while still being equal.  Otherwise, it's fine to pass `nil`
   /// (the default) for `self1` and `self2`.
-  ///
-  /// - Precondition: `self == (self1 ?? self) && self1 == (self2 ?? self)`.
   public func checkEquatableSemantics(equal self1: Self? = nil, _ self2: Self? = nil) {
     let self1 = self1 ?? self
     let self2 = self2 ?? self
-    precondition(self == self1)
-    precondition(self1 == self2)
     
     XCTAssertEqual(self, self, "Equatable conformance: == lacks reflexivity")
     XCTAssertEqual(self1, self1, "Equatable conformance: == lacks reflexivity")
@@ -41,14 +38,13 @@ extension Equatable {
 }
 
 extension Hashable {
-  /// XCTests `Self`'s conformance to `Hashable`, given equivalent instances.
+  /// XCTests `Self`'s conformance to `Hashable`, given equivalent instances
+  /// `self`, `self1`, and `self2`.
   ///
   /// If `Self` has a distinguishable identity or any remote parts, `self`, `self1`, and `self2`
   /// should not be trivial copies of each other.  In other words, the instances should be as
   /// different as possible internally, while still being equal.  Otherwise, it's fine to pass `nil`
   /// (the default) for `self1` and `self2`.
-  ///
-  /// - Precondition: `self == (self1 ?? self) && self1 == (self2 ?? self)`
   public func checkHashableSemantics(equal self1: Self? = nil, _ self2: Self? = nil) {
     checkEquatableSemantics(equal: self1, self2)
     let self1 = self1 ?? self
@@ -61,6 +57,7 @@ extension Hashable {
 
 extension Comparable {
   /// XCTests that `self` obeys all comparable laws with respect to an equivalent instance
+  /// `self1`.
   ///
   /// If `Self` has a distinguishable identity or any remote parts, `self` and `self1` should
   /// not be trivial copies of each other.  In other words, the instances should be as different as
@@ -70,7 +67,6 @@ extension Comparable {
   /// - Precondition: `self == (self1 ?? self)`
   private func checkComparableUnordered(equal self1: Self? = nil) {
     let self1 = self1 ?? self
-    precondition(self == self1)
     // Comparable still has distinct requirements for <,>,<=,>= so we need to check them all :(
     // Not Using XCTAssertLessThanOrEqual et al. because we don't want to be reliant on them calling
     // the operators literally; there are other ways they could be implemented.
@@ -107,9 +103,9 @@ extension Comparable {
   /// XCTests `Self`'s conformance to `Comparable`.
   ///
   /// If `Self` has a distinguishable identity or any remote parts, `self`, `self1`, and `self2`
-  /// should not be trivial copies of each other.  In other words, the instances should be as
-  /// different as possible internally, while still being equal.  Otherwise, it's fine to pass `nil`
-  /// (the default) for `self1` and `self2`.
+  /// should be equivalent, but should not be trivial copies of each other.  In other words, the
+  /// instances should be as different as possible internally, while still being equal.  Otherwise,
+  /// it's fine to pass `nil` (the default) for `self1` and `self2`.
   ///
   /// If distinct values for `greater` or `greaterStill` are unavailable (e.g. when `Self` only has
   /// one or two values), the caller may pass `nil` values. Callers are encouraged to pass non-`nil`
