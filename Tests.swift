@@ -91,7 +91,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "reflexivity")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), messageExcerpt: "reflexivity")
   }
 
   func testSymmetry() {
@@ -100,7 +100,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "symmetry")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), messageExcerpt: "symmetry")
   }
 
   func testTransitivity() {
@@ -109,7 +109,7 @@ final class EquatableTests: CheckXCAssertionFailureTestCase {
     XCTAssertEqual(samples[1], samples[2])
     
     checkXCAssertionFailure(
-      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), "transitivity")
+      samples[0].checkEquatableLaws(equal: samples[1], samples[2]), messageExcerpt:  "transitivity")
   }
 }
 
@@ -147,13 +147,16 @@ class HashableTests: CheckXCAssertionFailureTestCase {
   /// Shows that testing Hashable also tests Equatable
   func testEquatableFailures() {
     let r = EquatableTests.irreflexiveSamples
-    checkXCAssertionFailure(r[0].checkHashableLaws(equal: r[1], r[2]), "reflexivity")
+    checkXCAssertionFailure(
+      r[0].checkHashableLaws(equal: r[1], r[2]), messageExcerpt:  "reflexivity")
     
     let s = EquatableTests.asymmetricSamples
-    checkXCAssertionFailure(s[0].checkHashableLaws(equal: s[1], s[2]), "symmetry")
+    checkXCAssertionFailure(
+      s[0].checkHashableLaws(equal: s[1], s[2]), messageExcerpt:  "symmetry")
     
     let t = EquatableTests.intransitiveSamples
-    checkXCAssertionFailure(t[0].checkHashableLaws(equal: t[1], t[2]), "transitivity")
+    checkXCAssertionFailure(
+      t[0].checkHashableLaws(equal: t[1], t[2]), messageExcerpt:  "transitivity")
   }
 
   func testHashableFailure() {
@@ -162,7 +165,7 @@ class HashableTests: CheckXCAssertionFailureTestCase {
     s[0].checkEquatableLaws(equal: s[1], s[2])
     
     checkXCAssertionFailure(
-      s[0].checkHashableLaws(equal: s[1], s[2]), "distinct hash")
+      s[0].checkHashableLaws(equal: s[1], s[2]), messageExcerpt:  "distinct hash")
   }
 }
 
@@ -252,17 +255,17 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
 
     checkXCAssertionFailure(
       r[0].checkComparableLaws(equal: r[1], r[2], greater: r[3], greaterStill: r[4]),
-      "reflexivity")
+      messageExcerpt: "reflexivity")
 
     let s = EquatableTests.asymmetricSamples
     checkXCAssertionFailure(
       s[0].checkComparableLaws(equal: s[1], s[2], greater: s[3], greaterStill: s[4]),
-      "symmetry")
+      messageExcerpt: "symmetry")
     
     let t = EquatableTests.intransitiveSamples
     checkXCAssertionFailure(
       t[0].checkComparableLaws(equal: t[1], t[2], greater: t[3], greaterStill: t[4]),
-      "transitivity")
+      messageExcerpt: "transitivity")
   }
 
   func testComparableFailures() {
