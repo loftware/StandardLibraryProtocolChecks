@@ -305,6 +305,53 @@ class ComparableTests: CheckXCAssertionFailureTestCase {
   }
 }
 
+//
+// MARK: - Sequence
+//
+
+/// A sequence of Ints with as few assumptions as possible
+final class TestSequence: Sequence, IteratorProtocol {
+  var x = 0
+  let end: Int
+  let resurrectMe: Bool
+  
+  init(end: Int, illegalRessurection: Bool = false) {
+    self.end = end
+    resurrectMe = illegalRessurection
+  }
+  
+  func next() -> Int? {
+    if x == end {
+      if resurrectMe { x += 1 }
+      return nil
+    }
+    defer { x += 1 }
+    return x
+  }
+}
+
+class SequenceTests: CheckXCAssertionFailureTestCase {
+  func testSuccess() {
+    TestSequence(end: 20).checkSequenceLaws(expecting: 0..<20)
+    (0..<20).checkSequenceLaws(expecting: 0..<20)
+  }
+
+  func testElementMismatch() {
+    checkXCAssertionFailure(
+      TestSequence(end: 20).checkSequenceLaws(expecting: 1..<21))
+  }
+
+  func testMissingElements() {
+    checkXCAssertionFailure(
+      TestSequence(end: 20).checkSequenceLaws(expecting: 0..<25))
+  }
+
+  func testIteratorRessurrection() {
+    checkXCAssertionFailure(
+      TestSequence(end: 20, illegalRessurection: true).checkSequenceLaws(expecting: 0..<20))
+  }
+}
+
 // Local Variables:
 // fill-column: 100
 // End:
