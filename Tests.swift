@@ -355,6 +355,196 @@ class SequenceTests: CheckXCAssertionFailureTestCase {
   }
 }
 
+//
+// MARK: - Collection
+//
+
+/// A collection ostensibly equivalent to 0..<20 but with some laws optionally broken.
+final class TestCollection: Collection {
+  enum Law {
+    case sequenceElementsMatch,
+    iteratorDoesNotResurrect,
+    indicesPropertyElementsMatch,
+    indicesPropertySameLengthAsSelf,
+    indicesAreStrictlyIncreasing,
+    indexOffsetByWorks,
+    indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
+    indexOffsetByLimitedByRespectsLimit,
+    distanceWorks,
+    distanceIsOrderAgnostic,
+    isMultipass
+  }
+
+  init(brokenLaw: Law?) { self.brokenLaw = brokenLaw }
+  
+  let brokenLaw: Law?
+  var pass = 0
+  
+  struct Iterator: IteratorProtocol {
+    let brokenLaw: Law?
+    var parent: TestCollection
+    var value = 0
+    
+    mutating func next() -> Int? {
+      defer { 
+        if value != 20 || brokenLaw == .iteratorDoesNotResurrect {
+          value += 1
+        }
+      }
+      if value == 20 {
+        return nil
+      }
+      if value == 19 {
+        defer { parent.pass += 1 }
+        if brokenLaw == .sequenceElementsMatch { return 20 }
+        if brokenLaw == .isMultipass { return 19 + parent.pass }
+      }
+      return value
+    }
+  }
+  
+  func makeIterator() -> Iterator { .init(brokenLaw: brokenLaw, parent: self) }
+
+  struct Index : Comparable {
+    let brokenLaw: Law?
+    var x: Int
+    
+    init(_ x: Int, brokenLaw: Law?) {
+      self.x = x
+      self.brokenLaw = brokenLaw
+    }
+    
+    static func == (_ l: Self, _ r: Self) -> Bool { l.x == r.x }
+    
+    static func < (_ l: Self, _ r: Self) -> Bool {
+      let l0 = l.brokenLaw == .indicesAreStrictlyIncreasing && l.x == 10
+        ? 11 : l.x
+      let r0 = r.brokenLaw == .indicesAreStrictlyIncreasing && r.x == 10
+        ? 11 : r.x
+      return l0 < r0
+    }
+  }
+
+  struct IndicesBase: Collection {
+    let brokenLaw: Law?
+
+    typealias Index = TestCollection.Index
+    subscript(i: Index) -> Index { i }
+    func index(after i: Index) -> Index {
+      .init(i.x + (brokenLaw == .indicesPropertyElementsMatch ? 2 : 1), brokenLaw: i.brokenLaw)
+    }
+    var startIndex: Index { .init(0, brokenLaw: brokenLaw) }
+    var endIndex: Index {
+      .init(
+        brokenLaw == .indicesPropertySameLengthAsSelf
+          ? 21 : 20, brokenLaw: brokenLaw)
+    }
+  }
+  typealias Indices = IndicesBase.SubSequence
+  
+  var indices: Indices {
+    IndicesBase(brokenLaw: brokenLaw)[...]
+  }
+  
+  var startIndex: Index { .init(0, brokenLaw: brokenLaw) }
+  var endIndex: Index { .init(20, brokenLaw: brokenLaw) }
+
+  subscript(i: Index) -> Int {
+    if i.x == 19 {
+      defer { pass += 1 }
+      if brokenLaw == .isMultipass && pass > 0 { return 19 + pass }
+    }
+    return i.x
+  }
+  
+  func index(after i: Index) -> Index {
+    .init(i.x + 1, brokenLaw: i.brokenLaw)
+  }
+
+  func index(_ i: Index, offsetBy n: Int) -> Index {
+    .init(
+      i.x + (brokenLaw == .indexOffsetByWorks ? n * 100 / 88 : n),
+      brokenLaw: brokenLaw)
+  }
+
+  func index(_ i: Index, offsetBy offset: Int, limitedBy limit: Index) -> Index? {
+    var n = offset
+    if limit == endIndex
+         && brokenLaw == .indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy
+    {
+      if n > 2 { n -= 1 }
+    }
+
+    if brokenLaw != .indexOffsetByLimitedByRespectsLimit {
+      if n > 0 && i.x <= limit.x && i.x + n > limit.x
+           || n < 0 && i.x < limit.x && i.x + n < limit.x
+      {
+        return nil
+      }
+    }
+    return index(i, offsetBy: n)
+  }
+
+  func distance(from i0: Index, to j0: Index) -> Int {
+    var i = i0, j = j0
+    if brokenLaw == .distanceIsOrderAgnostic && j.x > i.x { swap(&i, &j)}
+    let d = j.x - i.x
+    return brokenLaw == .distanceWorks ? d * 100 / 95 : d
+  }
+}
+
+class CollectionTests: CheckXCAssertionFailureTestCase {
+  func testSuccess() {
+    TestCollection(brokenLaw: nil).checkCollectionLaws(expecting: 0..<20)
+    (0..<20).checkCollectionLaws(expecting: 0..<20)
+  }
+
+  func testFailSequenceElementsMatch() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .sequenceElementsMatch)
+        .checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "iterator/subscript access mismatch")
+  }
+
+  func testFailIteratorDoesNotResurrect() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .iteratorDoesNotResurrect)
+        .checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "Exhausted iterator expected to return nil from next")
+  }
+
+  func testFailIndicesPropertyElementsMatch() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .indicesPropertyElementsMatch)
+        .checkCollectionLaws(expecting: 0..<20),
+        messageExcerpt: "elements of indices property don't match index(after:)")
+  }
+
+  func testFailIndicesPropertySameLengthAsSelf() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .indicesPropertySameLengthAsSelf)
+        .checkCollectionLaws(expecting: 0..<20),
+        messageExcerpt: "indices property has too many elements")
+  }
+
+  func testFailIndicesAreStrictlyIncreasing() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .indicesAreStrictlyIncreasing)
+        .checkCollectionLaws(expecting: 0..<20),
+        messageExcerpt: "indices are not strictly increasing")
+  }
+  
+  /* Still to be tested:
+    indexOffsetByWorks,
+    indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
+    indexOffsetByLimitedByRespectsLimit,
+    distanceWorks,
+    distanceIsOrderAgnostic,
+    isMultipass
+   */
+}
+
+
 // Local Variables:
 // fill-column: 100
 // End:

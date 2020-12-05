@@ -80,11 +80,9 @@ extension Comparable {
     XCTAssert(self1 >= self)
   }
 
-  /// XCTests that `self` obeys all comparable laws with respect to `greater`.
-  ///
-  /// - Precondition: `self < greater`.
+  /// XCTests that `self` obeys all comparable laws with respect to a greater value `greater`.
   private func checkComparableOrdering(greater: Self) {
-    precondition(self < greater)
+    XCTAssert(self < greater, "Possible mis-test; \(self) ≮ \(greater)")
     // Comparable still has distinct requirements for <,>,<=,>= so we need to check them all :(
     
     // Not Using XCTAssertLessThanOrEqual et al. because we don't want to be reliant on them calling
@@ -219,13 +217,13 @@ extension Collection where Element: Equatable {
     expecting expectedContents: ExampleContents, maxSupportedCount: Int = Int.max
   ) where ExampleContents.Element == Element {
     precondition(
-      self.count >= 2 || self.count >= maxSupportedCount,
+      self.count >= Swift.min(2, maxSupportedCount),
       "must have at least \(Swift.min(2, maxSupportedCount)) elements")
 
-    let indicesWithEnd = Array(indices) + [endIndex]
-    startIndex.checkComparableLaws(
-      greater: indicesWithEnd.dropFirst().first,
-      greaterStill: indicesWithEnd.dropFirst(2).first)
+    
+    if startIndex == endIndex {
+      startIndex.checkEquatableLaws()
+    }
     
     checkSequenceLaws(expecting: expectedContents)
     
@@ -233,17 +231,24 @@ extension Collection where Element: Equatable {
     var firstPassElements: [Element] = []
     var remainingCount: Int = expectedContents.count
     var offset: Int = 0
-    var expectedIndices = indices[...]
+    var expectedIndices = indices
+    var sequenceElements = makeIterator()
+    var priorIndex: Index? = nil
     
     while i != endIndex {
+      let expectedIndex = expectedIndices.popFirst()
       XCTAssertEqual(
-        i, expectedIndices.popFirst()!,
-        "elements of indices don't match index(after:) results.")
+        i, expectedIndex,
+        "elements of indices property don't match index(after:) results.")
       
       XCTAssertLessThan(i, endIndex)
       let j = self.index(after: i)
-      XCTAssertLessThan(i, j)
-      firstPassElements.append(self[i])
+      XCTAssertLessThan(i, j, "indices are not strictly increasing")
+      if let h = priorIndex { h.checkComparableLaws(greater: i, greaterStill: j) }
+      else { i.checkComparableLaws(greater: j, greaterStill: nil) }
+      let e = self[i]
+      firstPassElements.append(e)
+      XCTAssertEqual(sequenceElements.next(), e, "iterator/subscript access mismatch.")
       
       XCTAssertEqual(index(i, offsetBy: remainingCount), endIndex)
       if offset != 0 {
@@ -261,37 +266,19 @@ extension Collection where Element: Equatable {
       }
       
       XCTAssertEqual(distance(from: i, to: endIndex), remainingCount)
+      priorIndex = i
       i = j
       remainingCount -= 1
       offset += 1
     }
-    XCTAssert(firstPassElements.elementsEqual(expectedContents))
+    
+    XCTAssertEqual(
+      nil, expectedIndices.popFirst(), "indices property has too many elements.")
+    
+    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass")
     
     // Check that the second pass has the same elements.  
     XCTAssert(indices.lazy.map { self[$0] }.elementsEqual(expectedContents))
-  }
-
-  /// Returns `index(i, offsetBy: n)`, invoking the implementation that
-  /// satisfies the generic requirement, without interference from anything that
-  /// happens to shadow it.
-  func generic_index(_ i: Index, offsetBy n: Int) -> Index {
-    index(i, offsetBy: n)
-  }
-
-  /// Returns `index(i, offsetBy: n, limitedBy: limit)`, invoking the
-  /// implementation that satisfies the generic requirement, without
-  /// interference from anything that happens to shadow it.
-  func generic_index(
-    _ i: Index, offsetBy n: Int, limitedBy limit: Index
-  ) -> Index? {
-    index(i, offsetBy: n, limitedBy: limit)
-  }
-
-  /// Returns `distance(from: i, to: j)`, invoking the
-  /// implementation that satisfies the generic requirement, without
-  /// interference from anything that happens to shadow it.
-  func generic_distance(from i: Index, to j: Index) -> Int {
-    distance(from: i, to: j)
   }
 }
 
@@ -410,11 +397,11 @@ extension RandomAccessCollection where Element: Equatable {
       expecting: expectedContents, maxSupportedCount: maxSupportedCount)
     operationCounts.reset()
     
-    XCTAssertEqual(generic_distance(from: startIndex, to: endIndex), count)
+    XCTAssertEqual(distance(from: startIndex, to: endIndex), count)
     XCTAssertEqual(operationCounts.indexAfter, 0)
     XCTAssertEqual(operationCounts.indexBefore, 0)
     
-    XCTAssertEqual(generic_distance(from: endIndex, to: startIndex), -count)
+    XCTAssertEqual(distance(from: endIndex, to: startIndex), -count)
     XCTAssertEqual(operationCounts.indexAfter, 0)
     XCTAssertEqual(operationCounts.indexBefore, 0)
 

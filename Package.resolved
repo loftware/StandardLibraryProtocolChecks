@@ -1,0 +1,16 @@
+{
+  "object": {
+    "pins": [
+      {
+        "package": "LoftTest_CheckXCAssertionFailure",
+        "repositoryURL": "https://github.com/loftware/CheckXCAssertionFailure",
+        "state": {
+          "branch": null,
+          "revision": "37527eb3ea38469a0498f521b644356c423b3566",
+          "version": "0.9.3"
+        }
+      }
+    ]
+  },
+  "version": 1
+}
