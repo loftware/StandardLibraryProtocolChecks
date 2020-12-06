@@ -508,6 +508,13 @@ extension RandomAccessOperationCounter: RandomAccessCollection {
 ///     
 ///       func index(after i: Index) -> Index { return base.index(after: i) }
 ///       func index(before i: Index) -> Index { return base.index(before: i) }
+///
+///       // Note: the following will have the wrong performance for RandomAccessCollection
+///       // conformance unless they are implemented:
+///       //
+///       // - index(:offsetBy:) 
+///       // - index(:offsetBy:limitedBy:)
+///       // - distance(from:to)
 ///     }
 ///
 /// First, make it conform to `RandomAccessCollectionAdapter`:
@@ -521,13 +528,12 @@ extension RandomAccessOperationCounter: RandomAccessCollection {
 ///         // Create a collection with operation counting.
 ///         let counter = RandomAccessOperationCounter(0..<20)
 ///         
-///         // Now adapt it with our adapter
+///         // Now adapt it with our adapter.
 ///         let testSubject = TrivialAdapter(base: counter)
-///         
-///         checkXCAssertionFailure(
-///           testSubject.checkRandomAccessCollectionLaws(
-///             expecting: 0..<20, operationCounts: counter.operationCounts),
-///           messageExcerpt: "O(1)")
+///
+///         // And make sure that behaves.
+///         testSubject.checkRandomAccessCollectionLaws(
+///           expecting: 0..<20, operationCounts: counter.operationCounts),
 ///       }
 ///     }
 ///     
