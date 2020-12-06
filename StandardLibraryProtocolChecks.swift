@@ -260,35 +260,36 @@ extension Collection where Element: Equatable {
       XCTAssertEqual(sequenceElements.next(), e, "iterator/subscript access mismatch.")
       
       XCTAssertEqual(
-        index(i, offsetBy: remainingCount), endIndex, "wrong result from index(offsetBy:)")
+        index(i, offsetBy: remainingCount), endIndex,
+        "index(offsetBy:) offset >= 0, unexpected result.")
       
       if offset != 0 {
         XCTAssertEqual(
           index(startIndex, offsetBy: offset - 1, limitedBy: i),
           index(startIndex, offsetBy: offset - 1),
-          "wrong unlimited result from index(offsetBy:limitedBy:)")
+          "index(offsetBy:limitedBy:) offset >= 0: limit not exceeded but had effect.")
       }
       
       for n in 0..<remainingCount {
         XCTAssertEqual(
           index(i, offsetBy: n, limitedBy: endIndex), index(i, offsetBy: n),
-          "wrong unlimited result from index(offsetBy:limitedBy:)")
+          "index(offsetBy:limitedBy: endIndex) offset >= 0, limit not exceeded but had effect.")
       }
       
       XCTAssertEqual(
         index(startIndex, offsetBy: offset, limitedBy: i), i,
-        "wrong unlimited result from index(offsetBy:limitedBy:)"
+        "index(offsetBy:limitedBy:) offset >= 0, limit not exceeded but had effect."
       )
       
       if remainingCount != 0 {
         XCTAssertEqual(
           index(startIndex, offsetBy: offset + 1, limitedBy: i), nil,
-          "limit not respected by index(offsetBy:limitedBy:)"
-        )
+          "index(offsetBy:limitedBy:) offset > 0, limit not respected.")
       }
       
       XCTAssertEqual(
-        distance(from: i, to: endIndex), remainingCount, "distance(from:to:) wrong result")
+        distance(from: i, to: endIndex), remainingCount,
+        "distance(from: i, to: j), i < j unexpected result.")
       
       priorIndex = i
       i = j
@@ -298,7 +299,7 @@ extension Collection where Element: Equatable {
 
     XCTAssertEqual(
       index(endIndex, offsetBy: 0, limitedBy: endIndex), endIndex,
-      "wrong unlimited result from index(offsetBy:limitedBy:)")
+      "index(offsetBy:limitedBy:) offset >= 0, limit not exceeded but had effect.")
 
     
     XCTAssertEqual(
@@ -340,10 +341,11 @@ extension BidirectionalCollection where Element: Equatable {
     while i != startIndex {
       XCTAssertGreaterThan(i, startIndex)
       let j = self.index(before: i)
-      XCTAssertEqual(index(after: j), i, " index(after:) does not undo index(before:)")
+      XCTAssertEqual(index(after: j), i, "index(after:) does not undo index(before:).")
       
       XCTAssertEqual(
-        index(i, offsetBy: -remainingCount), startIndex, "wrong result from index(offsetBy:)")
+        index(i, offsetBy: -remainingCount), startIndex,
+        "index(offsetBy:) offset <= 0, unexpected result.")
       
       if offset != 0 {
         XCTAssertEqual(

@@ -367,14 +367,17 @@ final class TestCollection: Collection {
     indicesPropertyElementsMatch,
     indicesPropertySameLengthAsSelf,
     indicesAreStrictlyIncreasing,
-    indexOffsetByWorks,
+    forwardIndexOffsetByWorks,
     indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
-    indexOffsetByLimitedByRespectsLimit,
-    distanceWorks,
-    distanceIsOrderAgnostic,
+    forwardIndexOffsetByLimitedByRespectsLimit,
+    forwardDistanceWorks,
     isMultipass,
     // BidirectionalCollection laws
-    indexBeforeUndoesIndexAfter
+    indexBeforeUndoesIndexAfter,
+    reverseIndexOffsetByWorks,
+    indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy,
+    reverseIndexOffsetByLimitedByRespectsLimit,
+    reverseDistanceWorks
   }
 
   init(brokenLaw: Law?) { self.brokenLaw = brokenLaw }
@@ -472,9 +475,11 @@ final class TestCollection: Collection {
   }
 
   func index(_ i: Index, offsetBy n: Int) -> Index {
-    .init(
-      i.x + (brokenLaw == .indexOffsetByWorks ? n * 100 / 88 : n),
-      brokenLaw: brokenLaw)
+    let offset    
+      = n > 0 && brokenLaw == .forwardIndexOffsetByWorks
+      || n < 0 && brokenLaw == .reverseIndexOffsetByWorks ? n * 100 / 88 : n
+    
+    return .init(i.x + offset, brokenLaw: brokenLaw)
   }
 
   func index(_ i: Index, offsetBy offset: Int, limitedBy limit: Index) -> Index? {
@@ -484,22 +489,26 @@ final class TestCollection: Collection {
     {
       if n > 2 { n -= 1 }
     }
-
-    if brokenLaw != .indexOffsetByLimitedByRespectsLimit {
-      if n > 0 && i.x <= limit.x && i.x + n > limit.x
-           || n < 0 && i.x < limit.x && i.x + n < limit.x
-      {
-        return nil
-      }
+    else if limit == startIndex
+              && brokenLaw == .indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy
+    {
+      if n < -2 { n += 1 }
+    }
+    
+    if brokenLaw != .forwardIndexOffsetByLimitedByRespectsLimit 
+      && i.x <= limit.x && i.x + n > limit.x
+      || brokenLaw != .reverseIndexOffsetByLimitedByRespectsLimit
+      && i.x >= limit.x && i.x + n < limit.x
+    {
+      return nil
     }
     return index(i, offsetBy: n)
   }
 
-  func distance(from i0: Index, to j0: Index) -> Int {
-    var i = i0, j = j0
-    if brokenLaw == .distanceIsOrderAgnostic && j.x > i.x { swap(&i, &j)}
+  func distance(from i: Index, to j: Index) -> Int {
     let d = j.x - i.x
-    return brokenLaw == .distanceWorks ? d * 100 / 95 : d
+    return d > 0 && brokenLaw == .forwardDistanceWorks
+      || d < 0 && brokenLaw == .reverseDistanceWorks ? d * 100 / 95 : d
   }
 }
 
@@ -544,33 +553,34 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
         messageExcerpt: "indices are not strictly increasing")
   }
   
-  func testFailIndexOffsetByWorks() {
+  func testFailForwardIndexOffsetByWorks() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .indexOffsetByWorks)
-        .checkCollectionLaws(expecting: 0..<20), messageExcerpt: "index(offsetBy:)")
+      TestCollection(brokenLaw: .forwardIndexOffsetByWorks)
+        .checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "index(offsetBy:) offset >= 0, unexpected result")
   }
   
-  func testFailIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
+  func testFailForwardIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
     checkXCAssertionFailure(
       TestCollection(
         brokenLaw: .indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy)
         .checkCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "wrong unlimited result from index(offsetBy:limitedBy:)")
+      messageExcerpt: "index(offsetBy:limitedBy: endIndex) offset >= 0, limit not exceeded")
   }
   
-  func testFailIndexOffsetByLimitedByRespectsLimit() {
+  func testFailForwardIndexOffsetByLimitedByRespectsLimit() {
     checkXCAssertionFailure(
       TestCollection(
-        brokenLaw: .indexOffsetByLimitedByRespectsLimit)
+        brokenLaw: .forwardIndexOffsetByLimitedByRespectsLimit)
         .checkCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "limit not respected by index(offsetBy:limitedBy:)")
+      messageExcerpt: "index(offsetBy:limitedBy:) offset > 0, limit not respected")
   }
   
-  func testFailDistanceWorks() {
+  func testFailForwardDistanceWorks() {
     checkXCAssertionFailure(
       TestCollection(
-        brokenLaw: .distanceWorks).checkCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "distance(from:to:) wrong result")
+        brokenLaw: .forwardDistanceWorks).checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "distance(from: i, to: j), i < j unexpected result")
   }
   
   func testFailIsMultipass() {
@@ -606,18 +616,41 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
     (0..<20).checkBidirectionalCollectionLaws(expecting: 0..<20)
   }
 
-  func testFailDistanceIsOrderAgnostic() {
-    checkXCAssertionFailure(
-      TestCollection(
-        brokenLaw: .distanceWorks).checkBidirectionalCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "negative distance(from:to:) wrong result")
-  }
-
   func testFailIndexBeforeUndoesIndexAfter() {
     checkXCAssertionFailure(
       TestCollection(brokenLaw: .indexBeforeUndoesIndexAfter)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(after:) does not undo index(before:)")
+  }
+
+  func testFailReverseIndexOffsetByWorks() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .reverseIndexOffsetByWorks)
+        .checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "index(offsetBy:) offset <= 0, unexpected result")
+  }
+  
+  func testFailReverseIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy)
+        .checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "index(offsetBy:limitedBy: startIndex) offset <= 0, limit not exceeded")
+  }
+  
+  func testFailReverseIndexOffsetByLimitedByRespectsLimit() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .reverseIndexOffsetByLimitedByRespectsLimit)
+        .checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "index(offsetBy:limitedBy:) offset < 0, limit not respected")
+  }
+  
+  func testFailReverseDistanceWorks() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .reverseDistanceWorks).checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "distance(from: i, to: j), j < i unexpected result")
   }
 }
 
