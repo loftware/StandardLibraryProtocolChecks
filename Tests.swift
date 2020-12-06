@@ -534,14 +534,48 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
         messageExcerpt: "indices are not strictly increasing")
   }
   
-  /* Still to be tested:
-    indexOffsetByWorks,
-    indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
-    indexOffsetByLimitedByRespectsLimit,
-    distanceWorks,
-    distanceIsOrderAgnostic,
-    isMultipass
-   */
+  func testFailIndexOffsetByWorks() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .indexOffsetByWorks)
+        .checkCollectionLaws(expecting: 0..<20), messageExcerpt: "index(offsetBy:)")
+  }
+  
+  func testFailIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy)
+        .checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "wrong unlimited result from index(offsetBy:limitedBy:)")
+  }
+  
+  func testFailIndexOffsetByLimitedByRespectsLimit() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .indexOffsetByLimitedByRespectsLimit)
+        .checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "limit not respected by index(offsetBy:limitedBy:)")
+  }
+  
+  func testFailDistanceWorks() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .distanceWorks).checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "distance(from:to:) wrong result")
+  }
+  
+  func testFailDistanceIsOrderAgnostic() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .distanceWorks).checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "negative distance(from:to:) wrong result")
+  }
+
+  func testFailIsMultipass() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .isMultipass).checkCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "multipass")
+  }
 }
 
 

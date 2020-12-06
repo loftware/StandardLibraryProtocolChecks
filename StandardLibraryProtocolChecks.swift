@@ -250,27 +250,50 @@ extension Collection where Element: Equatable {
       firstPassElements.append(e)
       XCTAssertEqual(sequenceElements.next(), e, "iterator/subscript access mismatch.")
       
-      XCTAssertEqual(index(i, offsetBy: remainingCount), endIndex)
+      XCTAssertEqual(
+        index(i, offsetBy: remainingCount), endIndex, "wrong result from index(offsetBy:)")
+      
       if offset != 0 {
         XCTAssertEqual(
           index(startIndex, offsetBy: offset - 1, limitedBy: i),
-          index(startIndex, offsetBy: offset - 1))
+          index(startIndex, offsetBy: offset - 1),
+          "wrong unlimited result from index(offsetBy:limitedBy:)")
+      }
+      
+      for n in 0..<remainingCount {
+        XCTAssertEqual(
+          index(i, offsetBy: n, limitedBy: endIndex), index(i, offsetBy: n),
+          "wrong unlimited result from index(offsetBy:limitedBy:)")
       }
       
       XCTAssertEqual(
-        index(startIndex, offsetBy: offset, limitedBy: i), i)
+        index(startIndex, offsetBy: offset, limitedBy: i), i,
+        "wrong unlimited result from index(offsetBy:limitedBy:)"
+      )
       
       if remainingCount != 0 {
         XCTAssertEqual(
-          index(startIndex, offsetBy: offset + 1, limitedBy: i), nil)
+          index(startIndex, offsetBy: offset + 1, limitedBy: i), nil,
+          "limit not respected by index(offsetBy:limitedBy:)"
+        )
       }
       
-      XCTAssertEqual(distance(from: i, to: endIndex), remainingCount)
+      XCTAssertEqual(
+        distance(from: i, to: endIndex), remainingCount, "distance(from:to:) wrong result")
+      XCTAssertEqual(
+        distance(from: endIndex, to: i),
+        -remainingCount, "negative distance(from:to:) wrong result")
+
       priorIndex = i
       i = j
       remainingCount -= 1
       offset += 1
     }
+
+    XCTAssertEqual(
+      index(endIndex, offsetBy: 0, limitedBy: endIndex), endIndex,
+      "wrong unlimited result from index(offsetBy:limitedBy:)")
+
     
     XCTAssertEqual(
       nil, expectedIndices.popFirst(), "indices property has too many elements.")
