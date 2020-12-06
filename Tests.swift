@@ -362,22 +362,27 @@ class SequenceTests: CheckXCAssertionFailureTestCase {
 /// A collection ostensibly equivalent to 0..<20 but with some laws optionally broken.
 final class TestCollection: Collection {
   enum Law {
-    case sequenceElementsMatch,
-    iteratorDoesNotResurrect,
-    indicesPropertyElementsMatch,
-    indicesPropertySameLengthAsSelf,
-    indicesAreStrictlyIncreasing,
-    forwardIndexOffsetByWorks,
-    indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
-    forwardIndexOffsetByLimitedByRespectsLimit,
-    forwardDistanceWorks,
-    isMultipass,
-    // BidirectionalCollection laws
-    indexBeforeUndoesIndexAfter,
-    reverseIndexOffsetByWorks,
-    indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy,
-    reverseIndexOffsetByLimitedByRespectsLimit,
-    reverseDistanceWorks
+    case
+      // Sequence laws
+      iteratorDoesNotResurrect,
+         
+      // Collection laws     
+      sequenceElementsMatch,         
+      indicesPropertyElementsMatch,
+      indicesPropertySameLengthAsSelf,
+      indicesAreStrictlyIncreasing,
+      forwardIndexOffsetByWorks,
+      indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy,
+      forwardIndexOffsetByLimitedByRespectsLimit,
+      forwardDistanceWorks,
+      isMultipass,
+      
+      // BidirectionalCollection laws
+      indexBeforeUndoesIndexAfter,
+      reverseIndexOffsetByWorks,
+      indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy,
+      reverseIndexOffsetByLimitedByRespectsLimit,
+      reverseDistanceWorks
   }
 
   init(brokenLaw: Law?) { self.brokenLaw = brokenLaw }
@@ -475,10 +480,9 @@ final class TestCollection: Collection {
   }
 
   func index(_ i: Index, offsetBy n: Int) -> Index {
-    let offset    
+    let offset
       = n > 0 && brokenLaw == .forwardIndexOffsetByWorks
       || n < 0 && brokenLaw == .reverseIndexOffsetByWorks ? n * 100 / 88 : n
-    
     return .init(i.x + offset, brokenLaw: brokenLaw)
   }
 
@@ -612,7 +616,7 @@ extension TestCollection.IndicesBase : BidirectionalCollection {
 
 class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
   func testSuccess() {
-    TestCollection(brokenLaw: nil).checkCollectionLaws(expecting: 0..<20)
+    TestCollection(brokenLaw: nil).checkBidirectionalCollectionLaws(expecting: 0..<20)
     (0..<20).checkBidirectionalCollectionLaws(expecting: 0..<20)
   }
 
@@ -651,6 +655,178 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
       TestCollection(
         brokenLaw: .reverseDistanceWorks).checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "distance(from: i, to: j), j < i unexpected result")
+  }
+}
+
+//
+// MARK: - RandomAccessCollection
+//
+struct TestAdaptor<Base: RandomAccessCollection> {
+  enum Law {
+    case
+      // RandomAccessCollection laws
+      forwardDistanceIsO1,
+      reverseDistanceIsO1,
+      forwardIndexOffsetByIsO1,
+      reverseIndexOffsetByIsO1,
+      forwardIndexOffsetByLimitedByIsO1,
+      reverseIndexOffsetByLimitedByIsO1
+  }
+
+  var base: Base
+  let brokenLaw: Law?
+}
+
+extension TestAdaptor: Collection {
+  typealias Index = Base.Index
+  var startIndex: Base.Index { base.startIndex }
+  var endIndex: Base.Index { base.endIndex }
+
+  subscript(i: Index) -> Base.Element { base[i] }
+
+  func index(after i: Index) -> Index { return base.index(after: i) }
+  func index(before i: Index) -> Index { return base.index(before: i) }
+
+  func index(_ i: Index, offsetBy n: Int) -> Index {
+    var i1 = i
+    if n > 0 && brokenLaw == .forwardIndexOffsetByIsO1 {
+      for _ in 0..<n { formIndex(after: &i1) }
+      return i1
+    }
+    if n < 0 && brokenLaw == .reverseIndexOffsetByIsO1 {
+      for _ in n..<0 { formIndex(before: &i1) }
+      return i1
+    }
+    return base.index(i, offsetBy: n)
+  }
+
+  func index(_ i: Index, offsetBy n: Int, limitedBy limit: Index) -> Index? {
+    var i1 = i
+    if n > 0 && brokenLaw == .forwardIndexOffsetByLimitedByIsO1 {
+      for _ in 0..<n {
+        if i1 == limit { return nil }
+        formIndex(after: &i1)
+      }
+      return i1
+    }
+    if n < 0 && brokenLaw == .reverseIndexOffsetByLimitedByIsO1 {
+      for _ in n..<0 {
+        if i1 == limit { return nil }
+        formIndex(before: &i1)
+      }
+      return i1
+    }
+    return base.index(i, offsetBy: n, limitedBy: limit)
+  }
+
+  func distance(from i: Index, to j: Index) -> Int {
+    if i < j {
+      if brokenLaw == .forwardDistanceIsO1 {
+        var i1 = i, n = 0
+        while i1 != j { formIndex(after: &i1); n += 1 }
+        return n
+      }
+    }
+    else {
+      if brokenLaw == .reverseDistanceIsO1 {
+        var j1 = j, n = 0
+        while j1 != i { formIndex(after: &j1); n -= 1 }
+        return n
+      }
+    }
+    return base.distance(from: i, to: j)
+  }
+}
+
+extension TestAdaptor: RandomAccessCollection, RandomAccessCollectionAdapter {}
+
+class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
+  func makeBase() -> RandomAccessOperationCounter<Range<Int>> {
+    RandomAccessOperationCounter(0..<20)
+  }
+  
+  func testSuccess() {
+    let base = makeBase()
+    TestAdaptor(base: base, brokenLaw: nil)
+      .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts)
+  }
+
+  func testFailForwardDistanceIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw: .forwardDistanceIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "distance(from: i, to: j) i <= j is not O(1)")
+  }
+
+  func testFailReverseDistanceIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw:  .reverseDistanceIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "distance(from: i, to: j) j <= i is not O(1)")
+  }
+
+  func testFailForwardIndexOffsetByIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw: .forwardIndexOffsetByIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "index(:offsetBy: i) i >= 0 is not O(1)")
+  }
+
+  func testFailReverseIndexOffsetByIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw:  .reverseIndexOffsetByIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "index(:offsetBy: i) i <= 0 is not O(1)")
+  }
+  
+  func testFailForwardIndexOffsetByLimitedByIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw: .forwardIndexOffsetByLimitedByIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "index(:offsetBy: i, limitedBy:) i >= 0 is not O(1)")
+  }
+
+  func testFailReverseIndexOffsetByLimitedByIs01() {
+    let base = makeBase()
+    checkXCAssertionFailure(
+      TestAdaptor(base: base, brokenLaw:  .reverseIndexOffsetByLimitedByIsO1)
+        .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
+      messageExcerpt: "index(:offsetBy: i, limitedBy:) i <= 0 is not O(1)")
+  }
+}
+
+/// A Really simple adapter over any `Base` that presents the same elements.
+struct TrivialAdapter<Base: RandomAccessCollection>: RandomAccessCollection {
+  var base: Base
+  typealias Index = Base.Index
+  var startIndex: Base.Index { base.startIndex }
+  var endIndex: Base.Index { base.endIndex }
+
+  subscript(i: Index) -> Base.Element { base[i] }
+
+  func index(after i: Index) -> Index { return base.index(after: i) }
+  func index(before i: Index) -> Index { return base.index(before: i) }
+}
+
+extension TrivialAdapter: RandomAccessCollectionAdapter {}
+
+class TestExample: CheckXCAssertionFailureTestCase {
+  func testLaws() {
+    // Create a collection with operation counting.
+    let counter = RandomAccessOperationCounter(0..<20)
+    
+    // Now adapt it with our adapter
+    let testSubject = TrivialAdapter(base: counter)
+    
+    checkXCAssertionFailure(
+      testSubject.checkRandomAccessCollectionLaws(
+        expecting: 0..<20, operationCounts: counter.operationCounts),
+      messageExcerpt: "O(1)")
   }
 }
 

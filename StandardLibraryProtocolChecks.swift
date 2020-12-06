@@ -209,7 +209,7 @@ extension Collection where Element: Equatable {
   /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
   ///   have.
   ///
-  /// - Requires: `self.count >= 2 || self.count >= maxSupportedCount`.
+  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
@@ -317,7 +317,7 @@ extension BidirectionalCollection where Element: Equatable {
   /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
   ///   have.
   ///
-  /// - Requires: `self.count >= 2 || self.count >= maxSupportedCount`.
+  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
@@ -398,72 +398,161 @@ public final class RandomAccessOperationCounts {
   public var indexBefore: Int = 0
 
   /// Creates an instance with zero counter values.
-  public init() {}
+  fileprivate init() {}
   
   /// Reset all counts to zero.
   public func reset() { (indexAfter, indexBefore) = (0, 0) }
 }
 
+/// A “shadow protocol” for `RandomAccessOperationCounter`, below, to work around the lack of
+/// [placeholder types in generic
+/// constraints](https://forums.swift.org/t/placeholder-types/41329/45).
+public protocol RandomAccessOperationCounterProtocol {
+  /// The type of collection being augmented with index movement counters
+  associatedtype Base: Collection
 
-/// A wrapper over some `Base` collection that counts index increment/decrement
-/// operations.
+  /// The collection being augmented with index movement counters.
+  var base: Base { get }
+
+  /// The operation counters.
+  var operationCounts: RandomAccessOperationCounts { get }
+}
+
+/// A wrapper over some `Base` collection that augments the base by counting index
+/// increment/decrement operations performed.
 ///
 /// This wrapper is useful for verifying that generic collection adapters that
 /// conditionally conform to `RandomAccessCollection` are actually providing the
-/// correct complexity.
-public struct RandomAccessOperationCounter<Base: RandomAccessCollection> {
+/// correct complexity. See `RandomAccessCollectionAdapter` for examples.
+///
+public struct RandomAccessOperationCounter<Base: RandomAccessCollection>
+  : RandomAccessOperationCounterProtocol
+{
   public var base: Base
   
   public typealias Index = Base.Index
   public typealias Element = Base.Element
 
-  /// The number of index incrementat/decrement operations applied to `self` and
+  /// The number of index increment/decrement operations applied to `self` and
   /// all its copies.
   public var operationCounts = RandomAccessOperationCounts()
+
+  public init(_ base: Base) { self.base = base }
 }
 
-extension RandomAccessOperationCounter: RandomAccessCollection {  
+extension RandomAccessOperationCounter: RandomAccessCollection {
+  /// The position of the first element.
   public var startIndex: Index { base.startIndex }
-  public var endIndex: Index { base.endIndex }
-  public subscript(i: Index) -> Base.Element { base[i] }
   
+  /// The position one step beyond the last element.
+  public var endIndex: Index { base.endIndex }
+
+  /// Accesses the element at `i`.
+  public subscript(i: Index) -> Base.Element { base[i] }
+
+  /// Returns the position immediately after `i`.
   public func index(after i: Index) -> Index {
     operationCounts.indexAfter += 1
     return base.index(after: i)
   }
+
+  /// Returns the position immediately before `i`.
   public func index(before i: Index) -> Index {
     operationCounts.indexBefore += 1
     return base.index(before: i)
   }
+
+  /// Replaces `i` with its successor.
+  public func formIndex(after i: inout Index) {
+    operationCounts.indexAfter += 1
+    return base.formIndex(after: &i)
+  }
+  
+  /// Replaces `i` with its predecessor.
+  public func formIndex(before i: inout Index) {
+    operationCounts.indexBefore += 1
+    return base.formIndex(before: &i)
+  }
+
+  /// Returns the position `n` forward steps from `i`, where -1 forward steps is a backward step.
   public func index(_ i: Index, offsetBy n: Int) -> Index {
     base.index(i, offsetBy: n)
   }
 
+  /// Returns `index(i, offsetBy: n)` unless `limit` is passed in the course of that traversal, in
+  /// which case `nil` is returned.
   public func index(_ i: Index, offsetBy n: Int, limitedBy limit: Index) -> Index? {
     base.index(i, offsetBy: n, limitedBy: limit)
   }
 
+  /// Returns the number of forward steps it takes to get from `i` to `j`, where -1 forward steps is
+  /// a reverse step.
   public func distance(from i: Index, to j: Index) -> Int {
     base.distance(from: i, to: j)
   }
 }
 
-extension RandomAccessCollection where Element: Equatable {
-  /// XCTests `self`'s semantic conformance to `RandomAccessCollection`,
-  /// expecting its elements to match `expectedContents`.
+/// Generic `RandomAccessCollection` types that adapt some `Base` collection and can be tested for
+/// conformance to random access efficiency constraints.
+///
+/// Use this to test your own adapters.  For example, to test this:
+///     
+///     /// A Really simple adapter over any `Base` that presents the same elements.
+///     struct TrivialAdapter<Base: RandomAccessCollection>: RandomAccessCollection {
+///       var base: Base
+///       typealias Index = Base.Index
+///       var startIndex: Base.Index { base.startIndex }
+///       var endIndex: Base.Index { base.endIndex }
+///     
+///       subscript(i: Index) -> Base.Element { base[i] }
+///     
+///       func index(after i: Index) -> Index { return base.index(after: i) }
+///       func index(before i: Index) -> Index { return base.index(before: i) }
+///     }
+///
+/// First, make it conform to `RandomAccessCollectionAdapter`:
+///
+///     extension TrivialAdapter: RandomAccessCollectionAdapter {}
+///
+/// Then you can test that it conforms as follows (this example will fail if you try it):
+///
+///     class TestExample: XCTestCase {
+///       func testLaws() {
+///         // Create a collection with operation counting.
+///         let counter = RandomAccessOperationCounter(0..<20)
+///         
+///         // Now adapt it with our adapter
+///         let testSubject = TrivialAdapter(base: counter)
+///         
+///         checkXCAssertionFailure(
+///           testSubject.checkRandomAccessCollectionLaws(
+///             expecting: 0..<20, operationCounts: counter.operationCounts),
+///           messageExcerpt: "O(1)")
+///       }
+///     }
+///     
+public protocol RandomAccessCollectionAdapter: Collection {
+  associatedtype Base: Collection
+}
+
+extension RandomAccessCollectionAdapter
+where Self: RandomAccessCollection,
+      Element: Equatable,
+      Base: RandomAccessOperationCounterProtocol
+{
+  /// XCTests `self`'s semantic conformance to `RandomAccessCollection`, expecting its elements to
+  /// match `expectedContents`.
   ///
-  /// - Parameter operationCounts: if supplied, should be an instance that
-  ///   tracks operations in copies of `self`.
+  /// - Parameter operationCounts: an instance that tracks operations in the `Base` collection that
+  ///   `self` wraps.
   /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
   ///   have.
   ///
-  /// - Requires: `self.count >= 2 || self.count >= maxSupportedCount`.
+  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
-  /// - Note: the fact that a call to this method compiles verifies static
-  ///   conformance.
   public func checkRandomAccessCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents,
-    operationCounts: RandomAccessOperationCounts = .init(),
+    operationCounts: RandomAccessOperationCounts,
     maxSupportedCount: Int = Int.max
   )
   where ExampleContents.Element == Element
@@ -471,32 +560,60 @@ extension RandomAccessCollection where Element: Equatable {
     checkBidirectionalCollectionLaws(
       expecting: expectedContents, maxSupportedCount: maxSupportedCount)
     operationCounts.reset()
-    
     XCTAssertEqual(distance(from: startIndex, to: endIndex), count)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "distance(from: i, to: j) i <= j is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "distance(from: i, to: j) i <= j is not O(1); did you forget to implement it?")
     
+    operationCounts.reset()
     XCTAssertEqual(distance(from: endIndex, to: startIndex), -count)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "distance(from: i, to: j) j <= i is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "distance(from: i, to: j) j <= i is not O(1); did you forget to implement it?")
 
+    operationCounts.reset()
     XCTAssertEqual(index(startIndex, offsetBy: count), endIndex)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "index(:offsetBy: i) i >= 0 is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "index(:offsetBy: i) i >= 0 is not O(1); did you forget to implement it?")
     
+    operationCounts.reset()
     XCTAssertEqual(index(endIndex, offsetBy: -count), startIndex)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "index(:offsetBy: i) i <= 0 is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "index(:offsetBy: i) i <= 0 is not O(1); did you forget to implement it?")
 
+    operationCounts.reset()
     XCTAssertEqual(
       index(startIndex, offsetBy: count, limitedBy: endIndex), endIndex)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "index(:offsetBy: i, limitedBy:) i >= 0 is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "index(:offsetBy: i, limitedBy:) i >= 0 is not O(1); did you forget to implement it?")
     
+    operationCounts.reset()
     XCTAssertEqual(
       index(endIndex, offsetBy: -count, limitedBy: startIndex), startIndex)
-    XCTAssertEqual(operationCounts.indexAfter, 0)
-    XCTAssertEqual(operationCounts.indexBefore, 0)
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexAfter, 1,
+      "index(:offsetBy: i, limitedBy:) i <= 0 is not O(1); did you forget to implement it?")
+    XCTAssertLessThanOrEqual(
+      operationCounts.indexBefore, 1,
+      "index(:offsetBy: i, limitedBy:) i <= 0 is not O(1); did you forget to implement it?")
   }
 }
 
