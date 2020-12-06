@@ -444,6 +444,7 @@ final class TestCollection: Collection {
           ? 21 : 20, brokenLaw: brokenLaw)
     }
 
+    // Needed to work around https://bugs.swift.org/browse/SR-13937
     func distance(from x: Index, to y: Index) -> Int {
       return TestCollection(brokenLaw: brokenLaw).distance(from: x, to: y)
     }
@@ -572,13 +573,6 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
       messageExcerpt: "distance(from:to:) wrong result")
   }
   
-  func testFailDistanceIsOrderAgnostic() {
-    checkXCAssertionFailure(
-      TestCollection(
-        brokenLaw: .distanceWorks).checkCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "negative distance(from:to:) wrong result")
-  }
-
   func testFailIsMultipass() {
     checkXCAssertionFailure(
       TestCollection(
@@ -612,11 +606,18 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
     (0..<20).checkBidirectionalCollectionLaws(expecting: 0..<20)
   }
 
+  func testFailDistanceIsOrderAgnostic() {
+    checkXCAssertionFailure(
+      TestCollection(
+        brokenLaw: .distanceWorks).checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "negative distance(from:to:) wrong result")
+  }
+
   func testFailIndexBeforeUndoesIndexAfter() {
     checkXCAssertionFailure(
       TestCollection(brokenLaw: .indexBeforeUndoesIndexAfter)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
-      messageExcerpt: "index(before:) does not undo index(after:)")
+      messageExcerpt: "index(after:) does not undo index(before:)")
   }
 }
 

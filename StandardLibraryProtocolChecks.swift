@@ -241,7 +241,9 @@ extension Collection where Element: Equatable {
     var expectedIndices = indices
     var sequenceElements = makeIterator()
     var priorIndex: Index? = nil
-    
+
+    // NOTE: if you edit this loop, you probably want to edit the inverse one for
+    // checkBidirectionalCollectionLaws below!
     while i != endIndex {
       let expectedIndex = expectedIndices.popFirst()
       XCTAssertEqual(
@@ -287,10 +289,7 @@ extension Collection where Element: Equatable {
       
       XCTAssertEqual(
         distance(from: i, to: endIndex), remainingCount, "distance(from:to:) wrong result")
-      XCTAssertEqual(
-        distance(from: endIndex, to: i),
-        -remainingCount, "negative distance(from:to:) wrong result")
-
+      
       priorIndex = i
       i = j
       remainingCount -= 1
@@ -305,10 +304,8 @@ extension Collection where Element: Equatable {
     XCTAssertEqual(
       nil, expectedIndices.popFirst(), "indices property has too many elements.")
     
-    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass")
-    
     // Check that the second pass has the same elements.  
-    XCTAssert(indices.lazy.map { self[$0] }.elementsEqual(expectedContents))
+    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass")
   }
 }
 
@@ -336,15 +333,55 @@ extension BidirectionalCollection where Element: Equatable {
       self[...].checkBidirectionalCollectionLaws(expecting: expectedContents)
     }
 
-    var j = endIndex
-    while j != startIndex {
-      let i = index(before: j)
-      XCTAssertEqual(index(after: i), j, "index(before:) does not undo index(after:)")
-      let offset = distance(from: i, to: startIndex)
-      XCTAssertLessThanOrEqual(offset, 0)
-      XCTAssertEqual(index(i, offsetBy: offset), startIndex)
-      j = i
+    var i = endIndex
+    var remainingCount: Int = expectedContents.count
+    var offset: Int = 0
+    
+    while i != startIndex {
+      XCTAssertGreaterThan(i, startIndex)
+      let j = self.index(before: i)
+      XCTAssertEqual(index(after: j), i, " index(after:) does not undo index(before:)")
+      
+      XCTAssertEqual(
+        index(i, offsetBy: -remainingCount), startIndex, "wrong result from index(offsetBy:)")
+      
+      if offset != 0 {
+        XCTAssertEqual(
+          index(endIndex, offsetBy: -(offset - 1), limitedBy: i),
+          index(endIndex, offsetBy: -(offset - 1)),
+          "wrong unlimited result from index(offsetBy:limitedBy:)")
+      }
+      
+      for n in 0..<remainingCount {
+        XCTAssertEqual(
+          index(i, offsetBy: -n, limitedBy: startIndex), index(i, offsetBy: -n),
+          "wrong unlimited result from index(offsetBy:limitedBy:)")
+      }
+      
+      XCTAssertEqual(
+        index(endIndex, offsetBy: -offset, limitedBy: i), i,
+        "wrong unlimited result from index(offsetBy:limitedBy:)"
+      )
+      
+      if remainingCount != 0 {
+        XCTAssertEqual(
+          index(endIndex, offsetBy: -(offset + 1), limitedBy: i), nil,
+          "limit not respected by index(offsetBy:limitedBy:)"
+        )
+      }
+      
+      XCTAssertEqual(
+        distance(from: i, to: startIndex), -remainingCount,
+        "negative distance(from:to:) wrong result")
+      
+      i = j
+      remainingCount -= 1
+      offset += 1
     }
+    
+    XCTAssertEqual(
+      index(startIndex, offsetBy: 0, limitedBy: startIndex), startIndex,
+      "wrong unlimited result from index(offsetBy:limitedBy:)")
   }
 }
 
