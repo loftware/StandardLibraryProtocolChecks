@@ -26,14 +26,14 @@ extension Equatable {
     let self1 = self1 ?? self
     let self2 = self2 ?? self
     
-    XCTAssertEqual(self, self, "Equatable conformance: == lacks reflexivity")
-    XCTAssertEqual(self1, self1, "Equatable conformance: == lacks reflexivity")
-    XCTAssertEqual(self2, self2, "Equatable conformance: == lacks reflexivity")
+    XCTAssertEqual(self, self, "Equatable conformance: == lacks reflexivity.")
+    XCTAssertEqual(self1, self1, "Equatable conformance: == lacks reflexivity.")
+    XCTAssertEqual(self2, self2, "Equatable conformance: == lacks reflexivity.")
     
-    XCTAssertEqual(self1, self, "Equatable conformance: == lacks symmetry")
-    XCTAssertEqual(self2, self1, "Equatable conformance: == lacks symmetry")
+    XCTAssertEqual(self1, self, "Equatable conformance: == lacks symmetry.")
+    XCTAssertEqual(self2, self1, "Equatable conformance: == lacks symmetry.")
 
-    XCTAssertEqual(self, self2, "Equatable conformance: == lacks transitivity")
+    XCTAssertEqual(self, self2, "Equatable conformance: == lacks transitivity.")
   }
 }
 
@@ -82,7 +82,7 @@ extension Comparable {
 
   /// XCTests that `self` obeys all comparable laws with respect to a greater value `greater`.
   private func checkComparableOrdering(greater: Self) {
-    XCTAssert(self < greater, "Possible mis-test; \(self) ≮ \(greater)")
+    XCTAssert(self < greater, "Possible mis-test; \(self) ≮ \(greater).")
     // Comparable still has distinct requirements for <,>,<=,>= so we need to check them all :(
     
     // Not Using XCTAssertLessThanOrEqual et al. because we don't want to be reliant on them calling
@@ -117,7 +117,7 @@ extension Comparable {
     equal self1: Self? = nil, _ self2: Self? = nil, greater: Self?, greaterStill: Self?
   ) {
     precondition(
-      greater != nil || greaterStill == nil, "`greaterStill` should be `nil` when `greater` is")
+      greater != nil || greaterStill == nil, "`greaterStill` should be `nil` when `greater` is.")
 
     checkEquatableLaws(equal: self1, self2)
     
@@ -191,7 +191,7 @@ extension Sequence where Element: Equatable {
     var remainder = expectedContents[...]
     while let x = i.next() {
       XCTAssertEqual(
-        remainder.popFirst(), x, "Sequence contents don't match expectations")
+        remainder.popFirst(), x, "Sequence contents don't match expectations.")
     }
     XCTAssert(
       remainder.isEmpty,
@@ -218,7 +218,7 @@ extension Collection where Element: Equatable {
   ) where ExampleContents.Element == Element {
     precondition(
       self.count >= Swift.min(2, maxSupportedCount),
-      "must have at least \(Swift.min(2, maxSupportedCount)) elements")
+      "must have at least \(Swift.min(2, maxSupportedCount)) elements.")
 
     
     if startIndex == endIndex {
@@ -252,7 +252,7 @@ extension Collection where Element: Equatable {
       
       XCTAssertLessThan(i, endIndex)
       let j = self.index(after: i)
-      XCTAssertLessThan(i, j, "indices are not strictly increasing")
+      XCTAssertLessThan(i, j, "indices are not strictly increasing.")
       if let h = priorIndex { h.checkComparableLaws(greater: i, greaterStill: j) }
       else { i.checkComparableLaws(greater: j, greaterStill: nil) }
       let e = self[i]
@@ -306,7 +306,7 @@ extension Collection where Element: Equatable {
       nil, expectedIndices.popFirst(), "indices property has too many elements.")
     
     // Check that the second pass has the same elements.  
-    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass")
+    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass.")
   }
 }
 
@@ -351,30 +351,28 @@ extension BidirectionalCollection where Element: Equatable {
         XCTAssertEqual(
           index(endIndex, offsetBy: -(offset - 1), limitedBy: i),
           index(endIndex, offsetBy: -(offset - 1)),
-          "wrong unlimited result from index(offsetBy:limitedBy:)")
+          "wrong unlimited result from index(offsetBy:limitedBy:).")
       }
       
       for n in 0..<remainingCount {
         XCTAssertEqual(
           index(i, offsetBy: -n, limitedBy: startIndex), index(i, offsetBy: -n),
-          "wrong unlimited result from index(offsetBy:limitedBy:)")
+          "index(offsetBy:limitedBy: startIndex) offset <= 0, limit not exceeded but had effect.")
       }
       
       XCTAssertEqual(
         index(endIndex, offsetBy: -offset, limitedBy: i), i,
-        "wrong unlimited result from index(offsetBy:limitedBy:)"
-      )
+        "wrong unlimited result from index(offsetBy:limitedBy:).")
       
       if remainingCount != 0 {
         XCTAssertEqual(
           index(endIndex, offsetBy: -(offset + 1), limitedBy: i), nil,
-          "limit not respected by index(offsetBy:limitedBy:)"
-        )
+          "index(offsetBy:limitedBy:) offset < 0, limit not respected.")
       }
       
       XCTAssertEqual(
         distance(from: i, to: startIndex), -remainingCount,
-        "negative distance(from:to:) wrong result")
+        "distance(from: i, to: j), j < i unexpected result.")
       
       i = j
       remainingCount -= 1
@@ -383,7 +381,7 @@ extension BidirectionalCollection where Element: Equatable {
     
     XCTAssertEqual(
       index(startIndex, offsetBy: 0, limitedBy: startIndex), startIndex,
-      "wrong unlimited result from index(offsetBy:limitedBy:)")
+      "wrong unlimited result from index(offsetBy:limitedBy:).")
   }
 }
 
@@ -513,7 +511,7 @@ extension MutableCollection where Element: Equatable {
       count == distinctContents.count, "distinctContents must have the same length as self.")
     precondition(
       !self.elementsEqual(distinctContents),
-      "distinctContents must not have the same elements as self")
+      "distinctContents must not have the same elements as self.")
 
     for (i, e) in zip(indices, distinctContents) { self[i] = e }
     XCTAssert(self.elementsEqual(distinctContents))
