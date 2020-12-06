@@ -372,7 +372,9 @@ final class TestCollection: Collection {
     indexOffsetByLimitedByRespectsLimit,
     distanceWorks,
     distanceIsOrderAgnostic,
-    isMultipass
+    isMultipass,
+    // BidirectionalCollection laws
+    indexBeforeUndoesIndexAfter
   }
 
   init(brokenLaw: Law?) { self.brokenLaw = brokenLaw }
@@ -428,6 +430,8 @@ final class TestCollection: Collection {
   struct IndicesBase: Collection {
     let brokenLaw: Law?
 
+    typealias Indices = Slice<IndicesBase>
+    var indices: Indices { self[...] }
     typealias Index = TestCollection.Index
     subscript(i: Index) -> Index { i }
     func index(after i: Index) -> Index {
@@ -439,7 +443,12 @@ final class TestCollection: Collection {
         brokenLaw == .indicesPropertySameLengthAsSelf
           ? 21 : 20, brokenLaw: brokenLaw)
     }
+
+    func distance(from x: Index, to y: Index) -> Int {
+      return TestCollection(brokenLaw: brokenLaw).distance(from: x, to: y)
+    }
   }
+  
   typealias Indices = IndicesBase.SubSequence
   
   var indices: Indices {
@@ -578,6 +587,38 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
   }
 }
 
+//
+// MARK: - BidirectionalCollection
+//
+extension TestCollection: BidirectionalCollection {
+  func index(before i: Index) -> Index {
+    .init(
+      i.x - (brokenLaw == .indexBeforeUndoesIndexAfter && i.x > 5 ? 2 : 1),
+      brokenLaw: i.brokenLaw)
+  }
+}
+
+extension TestCollection.IndicesBase : BidirectionalCollection {
+  func index(before i: Index) -> Index {
+    .init(
+      i.x - (brokenLaw == .indexBeforeUndoesIndexAfter && i.x > 5 ? 2 : 1),
+      brokenLaw: i.brokenLaw)
+  }
+}
+
+class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
+  func testSuccess() {
+    TestCollection(brokenLaw: nil).checkCollectionLaws(expecting: 0..<20)
+    (0..<20).checkBidirectionalCollectionLaws(expecting: 0..<20)
+  }
+
+  func testFailIndexBeforeUndoesIndexAfter() {
+    checkXCAssertionFailure(
+      TestCollection(brokenLaw: .indexBeforeUndoesIndexAfter)
+        .checkBidirectionalCollectionLaws(expecting: 0..<20),
+      messageExcerpt: "index(before:) does not undo index(after:)")
+  }
+}
 
 // Local Variables:
 // fill-column: 100

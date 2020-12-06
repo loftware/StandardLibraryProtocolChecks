@@ -226,6 +226,13 @@ extension Collection where Element: Equatable {
     }
     
     checkSequenceLaws(expecting: expectedContents)
+
+    if Self.self != Indices.self {
+      indices.checkCollectionLaws(expecting: indices)
+    }
+    if Self.self != SubSequence.self {
+      self[...].checkCollectionLaws(expecting: expectedContents)
+    }
     
     var i = startIndex
     var firstPassElements: [Element] = []
@@ -321,14 +328,22 @@ extension BidirectionalCollection where Element: Equatable {
   ) where ExampleContents.Element == Element {
     checkCollectionLaws(
       expecting: expectedContents, maxSupportedCount: maxSupportedCount)
-    var i = startIndex
-    while i != endIndex {
-      let j = index(after: i)
-      XCTAssertEqual(index(before: j), i)
+    
+    if Self.self != Indices.self {
+      indices.checkBidirectionalCollectionLaws(expecting: indices)
+    }
+    if Self.self != SubSequence.self {
+      self[...].checkBidirectionalCollectionLaws(expecting: expectedContents)
+    }
+
+    var j = endIndex
+    while j != startIndex {
+      let i = index(before: j)
+      XCTAssertEqual(index(after: i), j, "index(before:) does not undo index(after:)")
       let offset = distance(from: i, to: startIndex)
       XCTAssertLessThanOrEqual(offset, 0)
       XCTAssertEqual(index(i, offsetBy: offset), startIndex)
-      i = j
+      j = i
     }
   }
 }
