@@ -903,8 +903,35 @@ class MutableCollectionTests: CheckXCAssertionFailureTestCase {
   }
 }
 
+class TestTinyCollections: CheckXCAssertionFailureTestCase {
+  func testEmptyCollectionSuccess() {
+    EmptyCollection<Int>().checkBidirectionalCollectionLaws(expecting: [])
+  }
+
+  func testEmptyCollectionFail() {
+    checkXCAssertionFailure(
+      EmptyCollection<Int>().checkBidirectionalCollectionLaws(expecting: 2...2))
+  }
+
+  func testCollectionOfOneSuccess() {
+    CollectionOfOne(42).checkBidirectionalCollectionLaws(expecting: 42...42)
+  }
+
+  func testCollectionOfOneFailExpectedTooLong() {
+    checkXCAssertionFailure(
+      CollectionOfOne(42).checkBidirectionalCollectionLaws(expecting: 2...4),
+      messageExcerpt: "Expected tail elements")
+  }
+
+  func testCollectionOfOneFailExpectedTooShort() {
+    checkXCAssertionFailure(
+      CollectionOfOne(42).checkBidirectionalCollectionLaws(expecting: EmptyCollection()),
+      messageExcerpt: "More elements than expected found")
+  }
+}
+
 //
-// MARK: - Example
+// MARK: - Examples
 // 
 
 /// A Really simple adapter over any `Base` that presents the same elements.

@@ -190,12 +190,16 @@ extension Sequence where Element: Equatable {
     var i = self.makeIterator()
     var remainder = expectedContents[...]
     while let x = i.next() {
-      XCTAssertEqual(
-        remainder.popFirst(), x, "Sequence contents don't match expectations.")
+      if let e = remainder.popFirst() {
+        XCTAssertEqual(e, x, "Sequence contents don't match expectations.")
+      }
+      else {
+        XCTFail("More elements than expected found.")
+      }
     }
     XCTAssert(
       remainder.isEmpty,
-      "Expected tail elements \(Array(remainder)) not present in Sequence.")
+      "Expected tail elements \(Array(remainder).suffix(10)) not present in Sequence.")
     XCTAssertEqual(
       i.next(), nil,
       "Exhausted iterator expected to return nil from next() in perpetuity.")
@@ -206,21 +210,12 @@ extension Collection where Element: Equatable {
   /// XCTests `self`'s semantic conformance to `Collection`, expecting its
   /// elements to match `expectedContents`.
   ///
-  /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
-  ///   have.
-  ///
-  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
   public func checkCollectionLaws<ExampleContents: Collection>(
-    expecting expectedContents: ExampleContents, maxSupportedCount: Int = Int.max
+    expecting expectedContents: ExampleContents
   ) where ExampleContents.Element == Element {
-    precondition(
-      self.count >= Swift.min(2, maxSupportedCount),
-      "must have at least \(Swift.min(2, maxSupportedCount)) elements.")
-
-    
     if startIndex == endIndex {
       startIndex.checkEquatableLaws()
     }
@@ -236,7 +231,7 @@ extension Collection where Element: Equatable {
     
     var i = startIndex
     var firstPassElements: [Element] = []
-    var remainingCount: Int = expectedContents.count
+    var remainingCount: Int = count
     var offset: Int = 0
     var expectedIndices = indices
     var sequenceElements = makeIterator()
@@ -305,8 +300,8 @@ extension Collection where Element: Equatable {
     XCTAssertEqual(
       nil, expectedIndices.popFirst(), "indices property has too many elements.")
     
-    // Check that the second pass has the same elements.  
-    XCTAssert(firstPassElements.elementsEqual(expectedContents), "Collection is not multipass.")
+    // Check that the second pass has the same elements.
+    XCTAssert(firstPassElements.elementsEqual(self), "Collection is not multipass.")
   }
 }
 
@@ -314,18 +309,13 @@ extension BidirectionalCollection where Element: Equatable {
   /// XCTests `self`'s semantic conformance to `BidirectionalCollection`,
   /// expecting its elements to match `expectedContents`.
   ///
-  /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
-  ///   have.
-  ///
-  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
   public func checkBidirectionalCollectionLaws<ExampleContents: Collection>(
-    expecting expectedContents: ExampleContents, maxSupportedCount: Int = Int.max
-  ) where ExampleContents.Element == Element {
-    checkCollectionLaws(
-      expecting: expectedContents, maxSupportedCount: maxSupportedCount)
+    expecting expectedContents: ExampleContents) where ExampleContents.Element == Element
+  {
+    checkCollectionLaws(expecting: expectedContents)
     
     if Self.self != Indices.self {
       indices.checkBidirectionalCollectionLaws(expecting: indices)
@@ -335,7 +325,7 @@ extension BidirectionalCollection where Element: Equatable {
     }
 
     var i = endIndex
-    var remainingCount: Int = expectedContents.count
+    var remainingCount: Int = count
     var offset: Int = 0
     
     while i != startIndex {
@@ -551,20 +541,15 @@ where Self: RandomAccessCollection,
   ///
   /// - Parameter operationCounts: an instance that tracks operations in the `Base` collection that
   ///   `self` wraps.
-  /// - Parameter maxSupportedCount: the maximum number of elements that instances of `Self` can
-  ///   have.
   ///
-  /// - Requires: `self.count >= min(2, maxSupportedCount)`.
   /// - Complexity: O(N²), where N is `self.count`.
   public func checkRandomAccessCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents,
-    operationCounts: RandomAccessOperationCounts,
-    maxSupportedCount: Int = Int.max
+    operationCounts: RandomAccessOperationCounts
   )
   where ExampleContents.Element == Element
   {
-    checkBidirectionalCollectionLaws(
-      expecting: expectedContents, maxSupportedCount: maxSupportedCount)
+    checkBidirectionalCollectionLaws(expecting: expectedContents)
     operationCounts.reset()
     XCTAssertEqual(distance(from: startIndex, to: endIndex), count)
     XCTAssertLessThanOrEqual(
