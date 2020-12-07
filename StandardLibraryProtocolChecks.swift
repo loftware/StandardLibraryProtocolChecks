@@ -626,18 +626,68 @@ where Self: RandomAccessCollection,
 extension MutableCollection where Element: Equatable {
   /// XCTests `self`'s semantic conformance to `MutableCollection`.
   ///
-  /// - Requires: `count == distinctContents.count && !self.elementsEqual(distinctContents)`.
-  public mutating func checkMutableCollectionLaws<C: Collection>(writing distinctContents: C)
-    where C.Element == Element
+  /// - Precondition: `count == distinctContents.count`
+  /// - Precondition: `zip(self, distinctContents).allSatisfy { $0 != $1 }`
+  public mutating func checkMutableCollectionLaws<C0: Collection, C1: Collection>(
+    expecting expectedContents: C0, writing distinctContents: C1
+  )
+    where C0.Element == Element, C1.Element == Element
   {
-    precondition(
-      count == distinctContents.count, "distinctContents must have the same length as self.")
-    precondition(
-      !self.elementsEqual(distinctContents),
-      "distinctContents must not have the same elements as self.")
+    XCTAssertEqual(
+      count, distinctContents.count, "distinctContents must have the same length as self.")
+    XCTAssert(
+      zip(expectedContents, distinctContents).allSatisfy { $0 != $1 },
+      "corresponding elements of self and distinctContents must be unequal.")
 
-    for (i, e) in zip(indices, distinctContents) { self[i] = e }
-    XCTAssert(self.elementsEqual(distinctContents))
+    checkCollectionLaws(expecting: expectedContents)
+
+    let originalEndIndex = endIndex
+    let originalContents = Array(self)
+    let myIndices = Array(indices)
+
+    // Forward pass testing subscript set
+    for (i, (j, k)) in zip(myIndices, zip(distinctContents.indices, originalContents.indices)) {
+      self[i] = distinctContents[j]
+      XCTAssertEqual(
+        self[i], distinctContents[j],
+        "subscript set did not persist the new value.")
+      XCTAssert(
+        self[..<i].dropLast().elementsEqual(distinctContents[..<j].dropLast()),
+        "subscript set mutated earlier element.")
+      XCTAssert(
+        self[i...].dropFirst().elementsEqual(originalContents[k...].dropFirst()),
+        "subscript set mutated later element or changed count.")
+    }
+
+    // Backward pass testing subscript modify
+    for (i, (j, k)) in zip(
+          myIndices.reversed(),
+          zip(distinctContents.indices.reversed(), originalContents.indices.reversed())) {
+
+      func modify(_ e: inout Element, writing x: Element) {
+        XCTAssertEqual(
+          e, distinctContents[j],
+          "subscript modify did not expose the old element value for mutation.")
+        e = x
+      }
+      
+      modify(&self[i], writing: originalContents[k])
+      
+      XCTAssertEqual(
+        self[i], originalContents[k],
+        "subscript modify did not persist the new value.")
+      XCTAssert(
+        self[..<i].dropLast().elementsEqual(distinctContents[..<j].dropLast()),
+        "subscript modify mutated earlier element.")
+      XCTAssert(
+        self[i...].dropFirst().elementsEqual(originalContents[k...].dropFirst()),
+        "subscript modify mutated later element or changed count.")
+    }
+    
+    if Self.self != SubSequence.self {
+      self[..<originalEndIndex]
+        .checkMutableCollectionLaws(expecting: expectedContents, writing: distinctContents)
+    }
   }
 }
 

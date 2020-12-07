@@ -360,7 +360,7 @@ class SequenceTests: CheckXCAssertionFailureTestCase {
 //
 
 /// A collection ostensibly equivalent to 0..<20 but with some laws optionally broken.
-final class TestCollection: Collection {
+final class FlawedCollection: Collection {
   enum Law {
     case
       // Sequence laws
@@ -392,7 +392,7 @@ final class TestCollection: Collection {
   
   struct Iterator: IteratorProtocol {
     let brokenLaw: Law?
-    var parent: TestCollection
+    var parent: FlawedCollection
     var value = 0
     
     mutating func next() -> Int? {
@@ -440,7 +440,7 @@ final class TestCollection: Collection {
 
     typealias Indices = Slice<IndicesBase>
     var indices: Indices { self[...] }
-    typealias Index = TestCollection.Index
+    typealias Index = FlawedCollection.Index
     subscript(i: Index) -> Index { i }
     func index(after i: Index) -> Index {
       .init(i.x + (brokenLaw == .indicesPropertyElementsMatch ? 2 : 1), brokenLaw: i.brokenLaw)
@@ -454,7 +454,7 @@ final class TestCollection: Collection {
 
     // Needed to work around https://bugs.swift.org/browse/SR-13937
     func distance(from x: Index, to y: Index) -> Int {
-      return TestCollection(brokenLaw: brokenLaw).distance(from: x, to: y)
+      return FlawedCollection(brokenLaw: brokenLaw).distance(from: x, to: y)
     }
   }
   
@@ -518,55 +518,55 @@ final class TestCollection: Collection {
 
 class CollectionTests: CheckXCAssertionFailureTestCase {
   func testSuccess() {
-    TestCollection(brokenLaw: nil).checkCollectionLaws(expecting: 0..<20)
+    FlawedCollection(brokenLaw: nil).checkCollectionLaws(expecting: 0..<20)
     (0..<20).checkCollectionLaws(expecting: 0..<20)
   }
 
   func testFailSequenceElementsMatch() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .sequenceElementsMatch)
+      FlawedCollection(brokenLaw: .sequenceElementsMatch)
         .checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "iterator/subscript access mismatch")
   }
 
   func testFailIteratorDoesNotResurrect() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .iteratorDoesNotResurrect)
+      FlawedCollection(brokenLaw: .iteratorDoesNotResurrect)
         .checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "Exhausted iterator expected to return nil from next")
   }
 
   func testFailIndicesPropertyElementsMatch() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .indicesPropertyElementsMatch)
+      FlawedCollection(brokenLaw: .indicesPropertyElementsMatch)
         .checkCollectionLaws(expecting: 0..<20),
         messageExcerpt: "elements of indices property don't match index(after:)")
   }
 
   func testFailIndicesPropertySameLengthAsSelf() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .indicesPropertySameLengthAsSelf)
+      FlawedCollection(brokenLaw: .indicesPropertySameLengthAsSelf)
         .checkCollectionLaws(expecting: 0..<20),
         messageExcerpt: "indices property has too many elements")
   }
 
   func testFailIndicesAreStrictlyIncreasing() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .indicesAreStrictlyIncreasing)
+      FlawedCollection(brokenLaw: .indicesAreStrictlyIncreasing)
         .checkCollectionLaws(expecting: 0..<20),
         messageExcerpt: "indices are not strictly increasing")
   }
   
   func testFailForwardIndexOffsetByWorks() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .forwardIndexOffsetByWorks)
+      FlawedCollection(brokenLaw: .forwardIndexOffsetByWorks)
         .checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:) offset >= 0, unexpected result")
   }
   
   func testFailForwardIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .indexOffsetByLimitedByEndIndexMatchesIndexOffsetBy)
         .checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:limitedBy: endIndex) offset >= 0, limit not exceeded")
@@ -574,7 +574,7 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
   
   func testFailForwardIndexOffsetByLimitedByRespectsLimit() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .forwardIndexOffsetByLimitedByRespectsLimit)
         .checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:limitedBy:) offset > 0, limit not respected")
@@ -582,14 +582,14 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
   
   func testFailForwardDistanceWorks() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .forwardDistanceWorks).checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "distance(from: i, to: j), i < j unexpected result")
   }
   
   func testFailIsMultipass() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .isMultipass).checkCollectionLaws(expecting: 0..<20),
       messageExcerpt: "multipass")
   }
@@ -598,7 +598,7 @@ class CollectionTests: CheckXCAssertionFailureTestCase {
 //
 // MARK: - BidirectionalCollection
 //
-extension TestCollection: BidirectionalCollection {
+extension FlawedCollection: BidirectionalCollection {
   func index(before i: Index) -> Index {
     .init(
       i.x - (brokenLaw == .indexBeforeUndoesIndexAfter && i.x > 5 ? 2 : 1),
@@ -606,7 +606,7 @@ extension TestCollection: BidirectionalCollection {
   }
 }
 
-extension TestCollection.IndicesBase : BidirectionalCollection {
+extension FlawedCollection.IndicesBase : BidirectionalCollection {
   func index(before i: Index) -> Index {
     .init(
       i.x - (brokenLaw == .indexBeforeUndoesIndexAfter && i.x > 5 ? 2 : 1),
@@ -616,27 +616,27 @@ extension TestCollection.IndicesBase : BidirectionalCollection {
 
 class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
   func testSuccess() {
-    TestCollection(brokenLaw: nil).checkBidirectionalCollectionLaws(expecting: 0..<20)
+    FlawedCollection(brokenLaw: nil).checkBidirectionalCollectionLaws(expecting: 0..<20)
     (0..<20).checkBidirectionalCollectionLaws(expecting: 0..<20)
   }
 
   func testFailIndexBeforeUndoesIndexAfter() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .indexBeforeUndoesIndexAfter)
+      FlawedCollection(brokenLaw: .indexBeforeUndoesIndexAfter)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(after:) does not undo index(before:)")
   }
 
   func testFailReverseIndexOffsetByWorks() {
     checkXCAssertionFailure(
-      TestCollection(brokenLaw: .reverseIndexOffsetByWorks)
+      FlawedCollection(brokenLaw: .reverseIndexOffsetByWorks)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:) offset <= 0, unexpected result")
   }
   
   func testFailReverseIndexOffsetByLimitedByEndIndexMatchesIndexOffsetBy() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .indexOffsetByLimitedByStartIndexMatchesIndexOffsetBy)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:limitedBy: startIndex) offset <= 0, limit not exceeded")
@@ -644,7 +644,7 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
   
   func testFailReverseIndexOffsetByLimitedByRespectsLimit() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .reverseIndexOffsetByLimitedByRespectsLimit)
         .checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "index(offsetBy:limitedBy:) offset < 0, limit not respected")
@@ -652,7 +652,7 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
   
   func testFailReverseDistanceWorks() {
     checkXCAssertionFailure(
-      TestCollection(
+      FlawedCollection(
         brokenLaw: .reverseDistanceWorks).checkBidirectionalCollectionLaws(expecting: 0..<20),
       messageExcerpt: "distance(from: i, to: j), j < i unexpected result")
   }
@@ -661,7 +661,7 @@ class BidirectionalCollectionTests: CheckXCAssertionFailureTestCase {
 //
 // MARK: - RandomAccessCollection
 //
-struct TestAdaptor<Base: RandomAccessCollection> {
+struct FlawedAdapter<Base: RandomAccessCollection> {
   enum Law {
     case
       // RandomAccessCollection laws
@@ -677,7 +677,7 @@ struct TestAdaptor<Base: RandomAccessCollection> {
   let brokenLaw: Law?
 }
 
-extension TestAdaptor: Collection {
+extension FlawedAdapter: Collection {
   typealias Index = Base.Index
   var startIndex: Base.Index { base.startIndex }
   var endIndex: Base.Index { base.endIndex }
@@ -738,7 +738,7 @@ extension TestAdaptor: Collection {
   }
 }
 
-extension TestAdaptor: RandomAccessCollection, RandomAccessCollectionAdapter {}
+extension FlawedAdapter: RandomAccessCollection, RandomAccessCollectionAdapter {}
 
 class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func makeBase() -> RandomAccessOperationCounter<Range<Int>> {
@@ -747,14 +747,14 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   
   func testSuccess() {
     let base = makeBase()
-    TestAdaptor(base: base, brokenLaw: nil)
+    FlawedAdapter(base: base, brokenLaw: nil)
       .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts)
   }
 
   func testFailForwardDistanceIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw: .forwardDistanceIsO1)
+      FlawedAdapter(base: base, brokenLaw: .forwardDistanceIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "distance(from: i, to: j) i <= j is not O(1)")
   }
@@ -762,7 +762,7 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func testFailReverseDistanceIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw:  .reverseDistanceIsO1)
+      FlawedAdapter(base: base, brokenLaw:  .reverseDistanceIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "distance(from: i, to: j) j <= i is not O(1)")
   }
@@ -770,7 +770,7 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func testFailForwardIndexOffsetByIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw: .forwardIndexOffsetByIsO1)
+      FlawedAdapter(base: base, brokenLaw: .forwardIndexOffsetByIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "index(:offsetBy: i) i >= 0 is not O(1)")
   }
@@ -778,7 +778,7 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func testFailReverseIndexOffsetByIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw:  .reverseIndexOffsetByIsO1)
+      FlawedAdapter(base: base, brokenLaw:  .reverseIndexOffsetByIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "index(:offsetBy: i) i <= 0 is not O(1)")
   }
@@ -786,7 +786,7 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func testFailForwardIndexOffsetByLimitedByIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw: .forwardIndexOffsetByLimitedByIsO1)
+      FlawedAdapter(base: base, brokenLaw: .forwardIndexOffsetByLimitedByIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "index(:offsetBy: i, limitedBy:) i >= 0 is not O(1)")
   }
@@ -794,11 +794,118 @@ class RandomAccessCollectionTests: CheckXCAssertionFailureTestCase {
   func testFailReverseIndexOffsetByLimitedByIs01() {
     let base = makeBase()
     checkXCAssertionFailure(
-      TestAdaptor(base: base, brokenLaw:  .reverseIndexOffsetByLimitedByIsO1)
+      FlawedAdapter(base: base, brokenLaw:  .reverseIndexOffsetByLimitedByIsO1)
         .checkRandomAccessCollectionLaws(expecting: 0..<20, operationCounts: base.operationCounts),
       messageExcerpt: "index(:offsetBy: i, limitedBy:) i <= 0 is not O(1)")
   }
 }
+
+//
+// MARK: - MutableCollection
+//
+struct FlawedMutableCollection: MutableCollection {
+  enum Law {
+    case
+      subscriptSetPersistsNewValue,
+      subscriptSetDoesNotMutateOtherElements,
+      subscriptSetDoesNotChangeCount,
+      subscriptModifyExposesOldValue,
+      subscriptModifyPersistsNewValue,
+      subscriptModifyDoesNotMutateOtherElements,
+      subscriptModifyDoesNotChangeCount
+  }
+
+  typealias Storage = [Int]
+  typealias Index = Storage.Index
+  var storage = Array(0..<20)
+  let brokenLaw: Law?
+
+  var startIndex: Index { storage.startIndex }
+  var endIndex: Index { storage.endIndex }
+  func index(after i: Index) -> Index { storage.index(after: i) }
+  
+  subscript(i: Index) -> Int {
+    get { storage[i] }
+    set {
+      if brokenLaw == .subscriptSetDoesNotMutateOtherElements {
+        storage[(i + 10) % 20] += 1
+      }
+      storage[i] = newValue + (brokenLaw == .subscriptSetPersistsNewValue ? 1 : 0)
+      if brokenLaw == .subscriptSetDoesNotChangeCount { storage.append(0) }
+    }
+    _modify {
+      var io = storage[i] + (brokenLaw == .subscriptModifyExposesOldValue ? 1 : 0)
+      if brokenLaw == .subscriptModifyDoesNotMutateOtherElements {
+        storage[(i + 10) % 20] += 1
+      }
+      
+      yield &io
+      
+      storage[i] = io + (brokenLaw == .subscriptModifyPersistsNewValue ? 1 : 0)
+      if brokenLaw == .subscriptModifyDoesNotChangeCount { storage.append(0) }
+    }
+  }
+}
+
+class MutableCollectionTests: CheckXCAssertionFailureTestCase {
+  func testSuccess() {
+    var subject = FlawedMutableCollection(brokenLaw: nil)
+    subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40)
+  }
+
+  func testFailSubscriptSetPersistsNewValue() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptSetPersistsNewValue)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "subscript set did not persist")
+  }
+
+  func testFailSubscriptSetDoesNotMutateOtherElements() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptSetDoesNotMutateOtherElements)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "subscript set mutated")
+  }
+
+  func testFailSubscriptSetDoesNotChangeCount() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptSetDoesNotChangeCount)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "changed count")
+  }
+
+  func testFailSubscriptModifyExposesOldValue() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptModifyExposesOldValue)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "subscript modify did not expose the old element value")
+  }
+
+  func testFailSubscriptModifyPersistsNewValue() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptModifyPersistsNewValue)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "subscript modify did not persist")
+  }
+
+  func testFailSubscriptModifyDoesNotMutateOtherElements() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptModifyDoesNotMutateOtherElements)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "subscript modify mutated")
+  }
+
+  func testFailSubscriptModifyDoesNotChangeCount() {
+    var subject = FlawedMutableCollection(brokenLaw: .subscriptModifyDoesNotChangeCount)
+    checkXCAssertionFailure(
+      subject.checkMutableCollectionLaws(expecting: 0..<20, writing: 20..<40),
+      messageExcerpt: "changed count")
+  }
+}
+
+//
+// MARK: - Example
+// 
 
 /// A Really simple adapter over any `Base` that presents the same elements.
 struct TrivialAdapter<Base: RandomAccessCollection>: RandomAccessCollection {
