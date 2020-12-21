@@ -6,8 +6,8 @@
         "repositoryURL": "https://github.com/loftware/CheckXCAssertionFailure",
         "state": {
           "branch": null,
-          "revision": "90002d4961dcc1372f0b864e90b91590aff61633",
-          "version": "0.9.5"
+          "revision": "1e92d9c40059a3ea50e30da05ec83cec54d9b7ab",
+          "version": "0.9.6"
         }
       }
     ]

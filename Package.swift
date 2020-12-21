@@ -12,7 +12,7 @@ let package = Package(
   dependencies: [
     .package(
       url: "https://github.com/loftware/CheckXCAssertionFailure",
-      from: "0.9.3"),
+      from: "0.9.6"),
   ],
   targets: [
     .target(
