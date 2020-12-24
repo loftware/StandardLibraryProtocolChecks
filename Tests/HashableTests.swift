@@ -16,10 +16,6 @@ import XCTest
 import LoftTest_CheckXCAssertionFailure
 import LoftTest_StandardLibraryProtocolChecks
 
-//
-// MARK: - Hashable
-//
-
 extension BrokenFloat {
   enum HashableLaw { case hashValueIsConsistentWithEquality }
 }

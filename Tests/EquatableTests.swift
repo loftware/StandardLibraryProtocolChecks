@@ -16,10 +16,6 @@ import XCTest
 import LoftTest_CheckXCAssertionFailure
 import LoftTest_StandardLibraryProtocolChecks
 
-//
-// MARK: - Equatable
-//
-
 extension BrokenFloat {
   enum EquatableLaw: String { case equalIsReflexive, equalIsSymmetric, equalIsTransitive }
 }
