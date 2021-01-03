@@ -1,6 +1,6 @@
 # LoftTest_StandardLibraryProtocolChecks
 
-`XCTest`s that a type obeys the semantic laws associated with its Swift standard library protocol
+`XCTest`s that a type obeys the semantic laws of its Swift standard library protocol
 conformances.  For example, with this module imported, every `MutableCollection` type gets a
 `checkMutableCollectionsLaws` method that can help validate that it has been properly defined.
 
