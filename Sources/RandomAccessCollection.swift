@@ -172,7 +172,6 @@ public protocol RandomAccessCollectionAdapter: Collection {
 
 extension RandomAccessCollectionAdapter
 where Self: RandomAccessCollection,
-      Element: Equatable,
       Base: RandomAccessOperationCounterProtocol
 {
   /// XCTests `self`'s semantic conformance to `RandomAccessCollection`, expecting its elements to
@@ -193,12 +192,13 @@ where Self: RandomAccessCollection,
   }
 
   /// XCTests `self`'s semantic conformance to `RandomAccessCollection`, expecting its elements to
-  /// match `expectedContents`.
+  /// match `expectedContents` according to `areEquivalent`.
   ///
   /// - Parameter operationCounts: an instance that tracks operations in the `Base` collection that
   ///   `self` wraps.
   ///
   /// - Complexity: O(N²), where N is `self.count`.
+   /// - Precondition: `areEquivalent` is an equivalence relation.
   public func checkRandomAccessCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents,
     operationCounts: RandomAccessOperationCounts,
