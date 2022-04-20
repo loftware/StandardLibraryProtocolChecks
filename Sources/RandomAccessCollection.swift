@@ -186,9 +186,27 @@ where Self: RandomAccessCollection,
     expecting expectedContents: ExampleContents,
     operationCounts: RandomAccessOperationCounts
   )
+    where ExampleContents.Element == Element, Element: Equatable
+  {
+    checkRandomAccessCollectionLaws(
+      expecting: expectedContents, operationCounts: operationCounts, areEquivalent: ==)
+  }
+
+  /// XCTests `self`'s semantic conformance to `RandomAccessCollection`, expecting its elements to
+  /// match `expectedContents`.
+  ///
+  /// - Parameter operationCounts: an instance that tracks operations in the `Base` collection that
+  ///   `self` wraps.
+  ///
+  /// - Complexity: O(N²), where N is `self.count`.
+  public func checkRandomAccessCollectionLaws<ExampleContents: Collection>(
+    expecting expectedContents: ExampleContents,
+    operationCounts: RandomAccessOperationCounts,
+    areEquivalent: (Element, Element)->Bool
+  )
   where ExampleContents.Element == Element
   {
-    checkBidirectionalCollectionLaws(expecting: expectedContents)
+    checkBidirectionalCollectionLaws(expecting: expectedContents, areEquivalent: areEquivalent)
     operationCounts.reset()
     XCTAssertEqual(distance(from: startIndex, to: endIndex), count)
     XCTAssertLessThanOrEqual(
