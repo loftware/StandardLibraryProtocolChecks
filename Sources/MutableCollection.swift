@@ -15,7 +15,7 @@
 import XCTest
 
 
-extension MutableCollection where Element: Equatable {
+extension MutableCollection {
   /// XCTests `self`'s semantic conformance to `MutableCollection`.
   ///
   /// - Precondition: `count == distinctContents.count`
@@ -23,15 +23,32 @@ extension MutableCollection where Element: Equatable {
   public mutating func checkMutableCollectionLaws<C0: Collection, C1: Collection>(
     expecting expectedContents: C0, writing distinctContents: C1
   )
+    where C0.Element == Element, C1.Element == Element, Element: Equatable
+  {
+    checkMutableCollectionLaws(
+      expecting: expectedContents, writing: distinctContents, areEquivalent: ==)
+  }
+
+  /// XCTests `self`'s semantic conformance to `MutableCollection`, checking
+  /// element equivalence with `areEquivalent`.
+  ///
+  /// - Precondition: `count == distinctContents.count`
+  /// - Precondition: `zip(self, distinctContents).allSatisfy { !areEquivalent($0,
+  /// $1) }`
+  /// - Precondition: `areEquivalent` is an equivalence relation.
+  public mutating func checkMutableCollectionLaws<C0: Collection, C1: Collection>(
+    expecting expectedContents: C0, writing distinctContents: C1,
+    areEquivalent: (Element, Element)->Bool
+  )
     where C0.Element == Element, C1.Element == Element
   {
     XCTAssertEqual(
       count, distinctContents.count, "distinctContents must have the same length as self.")
     XCTAssert(
-      zip(expectedContents, distinctContents).allSatisfy { $0 != $1 },
+      zip(expectedContents, distinctContents).allSatisfy { !areEquivalent($0, $1) },
       "corresponding elements of self and distinctContents must be unequal.")
 
-    checkCollectionLaws(expecting: expectedContents)
+    checkCollectionLaws(expecting: expectedContents, areEquivalent: areEquivalent)
 
     let originalEndIndex = endIndex
     let originalContents = Array(self)
@@ -40,14 +57,16 @@ extension MutableCollection where Element: Equatable {
     // Forward pass testing subscript set
     for (i, (j, k)) in zip(myIndices, zip(distinctContents.indices, originalContents.indices)) {
       self[i] = distinctContents[j]
-      XCTAssertEqual(
-        self[i], distinctContents[j],
+      XCTAssert(
+        areEquivalent(self[i], distinctContents[j]),
         "subscript set did not persist the new value.")
       XCTAssert(
-        self[..<i].dropLast().elementsEqual(distinctContents[..<j].dropLast()),
+        self[..<i].dropLast()
+          .elementsEqual(distinctContents[..<j].dropLast(), by: areEquivalent),
         "subscript set mutated earlier element.")
       XCTAssert(
-        self[i...].dropFirst().elementsEqual(originalContents[k...].dropFirst()),
+        self[i...].dropFirst()
+          .elementsEqual(originalContents[k...].dropFirst(), by: areEquivalent),
         "subscript set mutated later element or changed count.")
     }
 
@@ -57,28 +76,31 @@ extension MutableCollection where Element: Equatable {
           zip(distinctContents.indices.reversed(), originalContents.indices.reversed())) {
 
       func modify(_ e: inout Element, writing x: Element) {
-        XCTAssertEqual(
-          e, distinctContents[j],
+        XCTAssert(
+          areEquivalent(e, distinctContents[j]),
           "subscript modify did not expose the old element value for mutation.")
         e = x
       }
       
       modify(&self[i], writing: originalContents[k])
       
-      XCTAssertEqual(
-        self[i], originalContents[k],
+      XCTAssert(
+        areEquivalent(self[i], originalContents[k]),
         "subscript modify did not persist the new value.")
       XCTAssert(
-        self[..<i].dropLast().elementsEqual(distinctContents[..<j].dropLast()),
+        self[..<i].dropLast()
+          .elementsEqual(distinctContents[..<j].dropLast(), by: areEquivalent),
         "subscript modify mutated earlier element.")
       XCTAssert(
-        self[i...].dropFirst().elementsEqual(originalContents[k...].dropFirst()),
+        self[i...].dropFirst()
+          .elementsEqual(originalContents[k...].dropFirst(), by: areEquivalent),
         "subscript modify mutated later element or changed count.")
     }
     
     if Self.self != SubSequence.self {
       self[..<originalEndIndex]
-        .checkMutableCollectionLaws(expecting: expectedContents, writing: distinctContents)
+        .checkMutableCollectionLaws(
+          expecting: expectedContents, writing: distinctContents, areEquivalent: areEquivalent)
     }
   }
 }

@@ -48,25 +48,12 @@ class FourStringsTests: XCTestCase {
 
 ## Details
 
-A few potentially-surprising design choices are worth discussing here.
+### Testing `Sequence`s and `Collection`s with non-`Equatable` elements.
 
-### `Equatable` element requirement for `Collection` tests
-
-One of the most basic features of a conforming `Collection` is that code making multiple passes over
-its elements will observe the same sequence of values each time.  Naturally, testing that property
-implies some way of measuring the “sameness” of two element values.  Therefore, the tests in this
-package require that the `Element` types are `Equatable`.  If you need to test a collection with an
-`Element` that is not `Equatable`, e.g. instances of some class `X`, you can extend `X` as follows,
-in your testing module:
-
-```swift
-extension X: Equatable {
-  static func == (a: X, b: X) -> Bool { a === b }
-}
-```
-
-That said, most `Collection`s can usefully be made generic over their element types, and if you did
-that to `X` you could tests `X<Int>`, since `Int` is `Equatable`.
+If you can't come up with equatable elements for your sequence, e.g. if the elements are non-nominal
+types like tuples, there's an overload of each `check xxxLaws` function that accepts an additional
+`areEquivalent` parameter, to which you can pass an equivalence relation.  If your elements are
+tuples with an `==` operator, you can simply pass `areEquivalent: ==`.
 
 ### `RandomAccessCollection` tests only work for adapters
 

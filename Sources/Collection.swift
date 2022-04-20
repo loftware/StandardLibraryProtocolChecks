@@ -14,7 +14,7 @@
 
 import XCTest
 
-extension Collection where Element: Equatable {
+extension Collection {
   /// XCTests `self`'s semantic conformance to `Collection`, expecting its
   /// elements to match `expectedContents`.
   ///
@@ -23,18 +23,31 @@ extension Collection where Element: Equatable {
   ///   conformance.
   public func checkCollectionLaws<ExampleContents: Collection>(
     expecting expectedContents: ExampleContents
+  ) where ExampleContents.Element == Element, Element: Equatable {
+    checkCollectionLaws(expecting: expectedContents, areEquivalent: ==)
+  }
+
+  /// XCTests `self`'s semantic conformance to `Collection`, expecting its
+  /// elements to match `expectedContents` according to `areEquivalent`.
+  ///
+  /// - Complexity: O(N²), where N is `self.count`.
+  /// - Note: the fact that a call to this method compiles verifies static
+  ///   conformance.
+  /// - Precondition: `areEquivalent` is an equivalence relation.
+  public func checkCollectionLaws<ExampleContents: Collection>(
+    expecting expectedContents: ExampleContents, areEquivalent: (Element, Element)->Bool
   ) where ExampleContents.Element == Element {
     if startIndex == endIndex {
       startIndex.checkEquatableLaws()
     }
     
-    checkSequenceLaws(expecting: expectedContents)
+    checkSequenceLaws(expecting: expectedContents, areEquivalent: areEquivalent)
 
     if Self.self != Indices.self {
       indices.checkCollectionLaws(expecting: indices)
     }
     if Self.self != SubSequence.self {
-      self[...].checkCollectionLaws(expecting: expectedContents)
+      self[...].checkCollectionLaws(expecting: expectedContents, areEquivalent: areEquivalent)
     }
     
     var i = startIndex
@@ -60,7 +73,10 @@ extension Collection where Element: Equatable {
       else { i.checkComparableLaws(greater: j, greaterStill: nil) }
       let e = self[i]
       firstPassElements.append(e)
-      XCTAssertEqual(sequenceElements.next(), e, "iterator/subscript access mismatch.")
+      let n = sequenceElements.next()
+      XCTAssert(
+        n != nil && areEquivalent(n!, e),
+        "\(String(describing: n)) != \(e): iterator/subscript access mismatch.")
       
       XCTAssertEqual(
         index(i, offsetBy: remainingCount), endIndex,
@@ -109,7 +125,9 @@ extension Collection where Element: Equatable {
       nil, expectedIndices.popFirst(), "indices property has too many elements.")
     
     // Check that the second pass has the same elements.
-    XCTAssert(firstPassElements.elementsEqual(self), "Collection is not multipass.")
+    XCTAssert(
+      firstPassElements.elementsEqual(self, by: areEquivalent),
+      "Collection is not multipass.")
   }
 }
 

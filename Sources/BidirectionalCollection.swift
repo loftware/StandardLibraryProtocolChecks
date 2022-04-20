@@ -14,7 +14,7 @@
 
 import XCTest
 
-extension BidirectionalCollection where Element: Equatable {
+extension BidirectionalCollection {
   /// XCTests `self`'s semantic conformance to `BidirectionalCollection`,
   /// expecting its elements to match `expectedContents`.
   ///
@@ -22,15 +22,33 @@ extension BidirectionalCollection where Element: Equatable {
   /// - Note: the fact that a call to this method compiles verifies static
   ///   conformance.
   public func checkBidirectionalCollectionLaws<ExampleContents: Collection>(
-    expecting expectedContents: ExampleContents) where ExampleContents.Element == Element
+    expecting expectedContents: ExampleContents)
+    where ExampleContents.Element == Element, Element: Equatable
   {
-    checkCollectionLaws(expecting: expectedContents)
+    checkBidirectionalCollectionLaws(expecting: expectedContents, areEquivalent: ==)
+  }
+
+  /// XCTests `self`'s semantic conformance to `BidirectionalCollection`,
+  /// expecting its elements to match `expectedContents` according to `areEquivalent`.
+  ///
+  /// - Complexity: O(N²), where N is `self.count`.
+  /// - Note: the fact that a call to this method compiles verifies static
+  ///   conformance.
+  /// - Precondition: `areEquivalent` is an equivalence relation.
+  public func checkBidirectionalCollectionLaws<ExampleContents: Collection>(
+    expecting expectedContents: ExampleContents,
+    areEquivalent: (Element, Element)->Bool
+  )
+    where ExampleContents.Element == Element
+  {
+    checkCollectionLaws(expecting: expectedContents, areEquivalent: areEquivalent)
     
     if Self.self != Indices.self {
       indices.checkBidirectionalCollectionLaws(expecting: indices)
     }
     if Self.self != SubSequence.self {
-      self[...].checkBidirectionalCollectionLaws(expecting: expectedContents)
+      self[...].checkBidirectionalCollectionLaws(
+        expecting: expectedContents, areEquivalent: areEquivalent)
     }
 
     var i = endIndex
