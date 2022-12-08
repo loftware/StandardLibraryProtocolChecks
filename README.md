@@ -143,3 +143,5 @@ func testHashableArrays() {
   a.checkHashableLaws(equal: b, c) // <======= HERE
 }
 ```
+
+
